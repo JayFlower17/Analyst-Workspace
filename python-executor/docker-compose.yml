@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  python-executor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: python-executor
+    ports:
+      - "8000:8000"
+    volumes:
+      # 挂载DuckDB数据目录（只读）
+      - ../backend/data:/data:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    # 安全配置
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M
+    networks:
+      - analysis-network
+
+networks:
+  analysis-network:
+    driver: bridge

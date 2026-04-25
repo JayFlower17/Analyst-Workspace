@@ -1,0 +1,60 @@
+# Compiled files
+target/
+*.class
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.claude/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Data
+data/
+uploads/
+*.duckdb
+*.duckdb.wal
+backend/data/
+backend/uploads/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Node (for frontend)
+node_modules/
+npm-debug.log
+
+# Docker
+.docker/
+
+# Local logs and diagnostics
+*.txt
+backend/*.log
+backend/*.txt
+
+# Nested / reference repositories
+third_party/
+volumes/

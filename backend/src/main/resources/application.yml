@@ -1,0 +1,98 @@
+server:
+  port: 8080
+  servlet:
+    session:
+      timeout: 180s
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+# HTTP Client Configuration
+http:
+  client:
+    connect-timeout: 30s
+    read-timeout: 120s
+
+spring:
+  application:
+    name: data-analysis-platform
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+  datasource:
+    url: jdbc:h2:file:./data/userdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: password
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  ai:
+    openai:
+      api-key: dummy-key-to-prevent-startup-errors
+      # Chat Model Configuration (DeepSeek)
+      chat:
+        api-key: ${DEEPSEEK_API_KEY:sk-7818eebef24c44448f7dfdea2a4c6110}
+        base-url: https://api.deepseek.com
+        options:
+          model: deepseek-chat
+      
+      # Embedding Model Configuration (AliCloud Bailian)
+      embedding:
+        api-key: sk-d437d669433d469f8ac14dcc0e6f7f66
+        base-url: https://dashscope.aliyuncs.com/compatible-mode
+        options:
+          model: text-embedding-v4
+          dimensions: 1024
+  
+    # Global HTTP Client timeout for Spring AI
+    retry:
+      max-attempts: 3
+      backoff:
+        initial-interval: 2000
+        max-interval: 10000
+
+# Override default RestTemplate timeouts for Spring AI
+spring.ai.openai.client.connect-timeout: 60s
+spring.ai.openai.client.read-timeout: 300s
+app:
+  jwtSecret: bXlTZWNyZXRLZXkxMjM0NU15U2VjcmV0S2V5MTIzNDVNeVNlY3JldEtleTEyMzQ1TXlTZWNyZXRLZXkxMjM0NQ==
+  jwtExpirationMs: 86400000 # 24 hours
+
+# DuckDB Configuration
+duckdb:
+  path: ./data/analysis.duckdb
+
+# Python Executor Configuration
+python-executor:
+  url: http://localhost:8000
+  timeout: 30000
+
+# File Upload Configuration
+upload:
+  path: ./uploads
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+    com.zaxxer.hikari: WARN
+    org.springframework.ai: DEBUG
+    org.apache.http: WARN
+    com.analysis: INFO
+  charset:
+    console: UTF-8
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level --- [%15.15thread] %-40.40logger{39} : %msg%n"
