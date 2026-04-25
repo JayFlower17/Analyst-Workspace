@@ -42,14 +42,14 @@ spring:
       api-key: dummy-key-to-prevent-startup-errors
       # Chat Model Configuration (DeepSeek)
       chat:
-        api-key: ${DEEPSEEK_API_KEY:sk-7818eebef24c44448f7dfdea2a4c6110}
+        api-key: ${DEEPSEEK_API_KEY:dummy-deepseek-key}
         base-url: https://api.deepseek.com
         options:
           model: deepseek-chat
       
       # Embedding Model Configuration (AliCloud Bailian)
       embedding:
-        api-key: sk-d437d669433d469f8ac14dcc0e6f7f66
+        api-key: ${DASHSCOPE_API_KEY:dummy-dashscope-key}
         base-url: https://dashscope.aliyuncs.com/compatible-mode
         options:
           model: text-embedding-v4
@@ -66,7 +66,7 @@ spring:
 spring.ai.openai.client.connect-timeout: 60s
 spring.ai.openai.client.read-timeout: 300s
 app:
-  jwtSecret: bXlTZWNyZXRLZXkxMjM0NU15U2VjcmV0S2V5MTIzNDVNeVNlY3JldEtleTEyMzQ1TXlTZWNyZXRLZXkxMjM0NQ==
+  jwtSecret: ${JWT_SECRET:ZGV2LW9ubHktand0LXNlY3JldC1jaGFuZ2UtbWUtYmVmb3JlLXByb2Q=}
   jwtExpirationMs: 86400000 # 24 hours
 
 # DuckDB Configuration

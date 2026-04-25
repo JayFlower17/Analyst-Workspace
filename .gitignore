@@ -11,6 +11,8 @@ target/
 *.swp
 *.swo
 .claude/
+AGENTS.md
+CLAUDE.md
 
 # Logs
 *.log
@@ -23,6 +25,10 @@ Thumbs.db
 # Environment
 .env
 .env.local
+.env.*
+!.env.example
+*.secret
+*.secrets
 
 # Data
 data/
@@ -46,14 +52,25 @@ build/
 # Node (for frontend)
 node_modules/
 npm-debug.log
+.next/
+.nuxt/
+.pnpm-store/
 
 # Docker
 .docker/
 
 # Local logs and diagnostics
-*.txt
+*.out
+*.err
+*.pid
+*.seed
+*.stackdump
 backend/*.log
 backend/*.txt
+backend/signin.json
+backend/src/main/resources/application-local.yml
+backend/src/main/resources/application-secrets.yml
+*.bak
 
 # Nested / reference repositories
 third_party/
