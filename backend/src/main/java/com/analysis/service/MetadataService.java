@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.analysis.model.entity.ColumnMetadata;
@@ -20,13 +22,25 @@ import lombok.extern.slf4j.Slf4j;
 public class MetadataService {
 
     private final DuckDBRepository duckDBRepository;
-    private final org.springframework.ai.vectorstore.VectorStore vectorStore;
+    private final ObjectProvider<org.springframework.ai.vectorstore.VectorStore> vectorStoreProvider;
+    @Value("${app.vector-store.enabled:true}")
+    private boolean vectorStoreEnabled;
 
     /**
      * 将表的元数据转化为自然语言文档，存入向量数据库以供 RAG 检索
      */
     // 向量数据库的工作原理是把文本转成向量，通过语义相似度来检索
     public void saveMetadataToVectorStore(String tableName, Long datasetId, List<ColumnMetadata> columns) {
+        if (!vectorStoreEnabled) {
+            log.info("Vector Store is disabled by config; skipping metadata indexing for table: {}", tableName);
+            return;
+        }
+        org.springframework.ai.vectorstore.VectorStore vectorStore = vectorStoreProvider.getIfAvailable();
+        if (vectorStore == null) {
+            log.info("Vector Store is disabled; skipping metadata indexing for table: {}", tableName);
+            return;
+        }
+
         List<org.springframework.ai.document.Document> documents = new ArrayList<>();
 
         for (ColumnMetadata col : columns) {

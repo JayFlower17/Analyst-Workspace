@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-04-26T00:15:19",
+  "category": "workspace",
+  "total": 2,
+  "passed": 0,
+  "failed": 2,
+  "results": [
+    {
+      "case_id": "workspace_orders_users_join_overview",
+      "category": "workspace",
+      "passed": false,
+      "reason": "Analysis failed: focusDatasetIds 与工作区数据集不匹配",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": false,
+        "message": "Analysis failed: focusDatasetIds 与工作区数据集不匹配",
+        "summary": null,
+        "rows": 0,
+        "artifactId": null
+      }
+    },
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": false,
+      "reason": "Analysis failed: focusDatasetIds 与工作区数据集不匹配",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": false,
+        "message": "Analysis failed: focusDatasetIds 与工作区数据集不匹配",
+        "summary": null,
+        "rows": 0,
+        "artifactId": null
+      }
+    }
+  ]
+}

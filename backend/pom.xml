@@ -23,6 +23,7 @@
         <duckdb.version>1.0.0</duckdb.version>
         <poi.version>5.2.5</poi.version>
         <jsqlparser.version>4.9</jsqlparser.version>
+        <pdfbox.version>3.0.2</pdfbox.version>
     </properties>
 
     <dependencies>
@@ -82,6 +83,13 @@
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
             <version>${poi.version}</version>
+        </dependency>
+
+        <!-- Apache PDFBox for PDF text extraction -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>${pdfbox.version}</version>
         </dependency>
 
         <!-- JSqlParser for SQL validation -->

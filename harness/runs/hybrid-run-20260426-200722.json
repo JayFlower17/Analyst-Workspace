@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-04-26T20:07:22",
+  "category": "hybrid",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "hybrid_workspace_orders_users_note_priority",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "根据订单与用户表的关联分析，按VIP等级汇总了各用户分段的订单指标。L3（最高等级VIP）用户分段应被优先关注：该分段拥有40名用户和1710笔订单，总消费金额最高（1,456,358.50），平均订单价值（851.67）和人均收入贡献（36,408.96）均领先于其他分段。L1和L2分段在订单量上相同（各1710笔），但L1的总收入（1,367,439.50）略高于L2（1,364,718.00）。整体来看，VIP等级越高（L3 > L2 > L1），消费能力和客单价越高，建议优先对L3高价值用户群体进行精细化运营和资源倾斜。",
+        "rows": 3,
+        "artifactId": 31
+      }
+    }
+  ]
+}

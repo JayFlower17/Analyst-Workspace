@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-04-26T00:26:15",
+  "category": "workspace",
+  "total": 2,
+  "passed": 1,
+  "failed": 1,
+  "results": [
+    {
+      "case_id": "workspace_orders_users_join_overview",
+      "category": "workspace",
+      "passed": false,
+      "reason": "None of the expected columns appeared: ['segment', 'user_segment', 'order_count', 'count']",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The analysis joined the orders and users tables (via user_id) and summarized order counts by user segment. Key findings:\n\n1. **By VIP Level**: Each VIP level (L1, L2, L3) has exactly 40 users and 1,710 orders — the data is evenly distributed across VIP levels. However, L3 generates the highest total revenue ($1,456,358.50) and highest average order value ($851.67), while L1 has the lowest average ($799.67).\n\n2. **By Gender + VIP Level**: A clear gender-based pattern emerges:\n   - **Male users** place more orders (870 vs 840 per segment) and have significantly higher average order values (L1: $898.46, L2: $967.41, L3: $1,040.82) compared to females (L1: $697.36, L2: $622.70, L3: $655.77).\n   - Male L3 users have the highest average order value ($1,040.82) and total revenue ($905,509.75).\n   - Female L2 users have the lowest average order value ($622.70).\n\n3. **By Region**: All 5 regions (华东, 华南, 华北, 华中, 西南) have identical metrics — 24 users, 1,026 orders, and $837,703.20 revenue each — suggesting synthetic data.\n\n**Conclusion**: The most meaningful user segmentation is by VIP level combined with gender, where male users consistently outperform female users in order frequency and spending, and L3 VIPs show the highest spending per order.",
+        "rows": 6,
+        "artifactId": 15
+      }
+    },
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The combined traffic and orders analysis from July to December 2025 reveals a stable e-commerce operation with clear seasonal patterns. Total traffic reached 2.8M page views from 1.67M unique visitors, generating ¥4.19M in revenue from 5,130 orders across 60 products. Monthly traffic (PV) grew steadily from 421K in July to a peak of 514K in October, then declined to 406K in December. Revenue remained remarkably stable month-over-month at ¥660K-¥720K, suggesting consistent purchase behavior despite traffic fluctuations. The conversion funnel shows: ~41% of visitors clicked on products, ~11.5% added items to cart, but only ~0.3% completed orders — indicating significant opportunity for conversion rate optimization. The bounce rate stayed consistently at 28-29%. The number of monthly unique buyers was exactly 120 each month, pointing to a stable but limited customer base. Revenue per visitor averaged approximately ¥2.51 overall. The click-to-purchase rate (orders/click_users) was about 0.75%, while the add-cart-to-purchase conversion was stronger at ~2.7%.",
+        "rows": 6,
+        "artifactId": 16
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-04-26T15:20:25",
+  "category": "workspace",
+  "total": 2,
+  "passed": 2,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "workspace_orders_users_join_overview",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "Joined users and orders tables (120 users, 5,130 orders) and summarized order counts by user segment. **By VIP Level**: Each level (L1/L2/L3) has 40 users and 1,710 orders (42.75 orders/user). **By Region**: Each of the 5 regions has 24 users and 1,026 orders (42.75 orders/user). **By Gender**: Male users have 2,610 orders (43.5/user), Female users have 2,520 orders (42.0/user). **By Signup Channel**: referral/organic channels have 1,305 orders (43.5/user), ads/social have 1,260 orders (42.0/user). The data is synthetically balanced with 2 users per segment combination; gender and signup channel show the most differentiation in order frequency.",
+        "rows": 60,
+        "artifactId": 24
+      }
+    },
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "## Traffic & Orders Combined Summary\n\n### Overall (Jul 2025 – Dec 2025, 45 days per channel)\n\n**4 channels** were analyzed: **Ads, Referral, Social, and Organic** — each with ~700K page views and ~413K–421K unique visitors over 6 months.\n\n### Revenue Ranking:\n1. **Ads** — ¥1,083,806 (highest, avg order ¥830.50)\n2. **Referral** — ¥1,069,619 (avg order ¥819.63)\n3. **Social** — ¥1,025,724 (avg order ¥814.07)\n4. **Organic** — ¥1,009,367 (avg order ¥801.09)\n\n### Conversion & Efficiency:\n- **UV-to-Order Rate**: Ads & Referral lead at 0.31%, Social & Organic at 0.30%.\n- **Revenue per UV**: Ads (¥2.58) > Referral (¥2.54) > Social (¥2.48) > Organic (¥2.44)\n- **Avg Bounce Rate**: Identical at ~28.5% across all channels.\n- **Total Orders**: Ads & Referral each had 1,305 orders; Social & Organic had 1,260 each.\n- **Add-to-Cart**: Referral (48,267) and Ads (48,225) slightly ahead of Social (47,437) and Organic (47,339).\n\n### Monthly Trends:\n- Traffic (PV/UV) peaked in **Sep–Oct** across all channels.\n- Conversion rates dipped in **Sep–Nov** (0.28%–0.29%) and recovered in **Dec** (0.33%–0.34%).\n- **Referral** showed the strongest Dec recovery in revenue (¥172,614).\n\n### Key Insight:\n**Ads** channel generates the highest total revenue and best revenue-per-visitor, making it the most efficient paid channel. **Referral** has nearly identical volume and slightly higher add-to-cart activity. **Organic** underperforms in conversion despite comparable traffic, suggesting room for optimization in content or landing pages.",
+        "rows": 4,
+        "artifactId": 25
+      }
+    }
+  ]
+}

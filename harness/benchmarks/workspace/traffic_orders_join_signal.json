@@ -1,0 +1,14 @@
+{
+  "id": "workspace_traffic_orders_join_signal",
+  "category": "workspace",
+  "description": "Look for a simple relationship between traffic and orders in one workspace.",
+  "request": {
+    "groupId": 1,
+    "focusDatasetNames": ["stage2_orders.csv", "stage2_traffic.csv"],
+    "query": "Compare traffic and orders at a grouped level and return the most useful combined summary."
+  },
+  "expectations": {
+    "success": true,
+    "min_rows": 1
+  }
+}

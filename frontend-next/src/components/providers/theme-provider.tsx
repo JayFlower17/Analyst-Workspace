@@ -47,33 +47,33 @@ const themeVariables: Record<Theme, Record<string, string>> = {
     "--color-button-hover-background": "rgba(0, 0, 0, 0.04)",
   },
   dark: {
-    "--color-background-primary": "#1f1e1b",
-    "--color-background-secondary": "#1f1e1b",
-    "--color-background-tertiary": "#141412",
-    "--color-background-info": "#1a2530",
-    "--color-background-danger": "#2a1f1f",
-    "--color-background-success": "#1a2a1f",
-    "--color-background-warning": "#2a2215",
-    "--color-sidebar-background": "#1c1b18",
-    "--color-sidebar-hover-background": "#232220",
-    "--color-sidebar-active-background": "#2a2925",
-    "--color-sidebar-active-text": "#f0ede6",
-    "--color-user-bubble-background": "#2a2925",
-    "--color-user-bubble-text": "#f0ede6",
-    "--color-accent-highlight": "#8a6a40",
-    "--color-text-primary": "#f0ede6",
-    "--color-text-secondary": "#9c9a93",
-    "--color-text-tertiary": "#5c5a54",
-    "--color-text-info": "#6ba3cc",
-    "--color-text-danger": "#cc6b6b",
-    "--color-text-success": "#6bab7c",
-    "--color-text-warning": "#ccaa6b",
-    "--color-border-tertiary": "rgba(255, 255, 255, 0.1)",
-    "--color-border-secondary": "rgba(255, 255, 255, 0.18)",
-    "--color-border-primary": "rgba(255, 255, 255, 0.28)",
-    "--color-border-info": "#85b7eb",
-    "--color-focus-ring": "rgba(255, 255, 255, 0.12)",
-    "--color-button-hover-background": "rgba(255, 255, 255, 0.06)",
+    "--color-background-primary": "#1E1E1E",
+    "--color-background-secondary": "#1A1A1A",
+    "--color-background-tertiary": "#121212",
+    "--color-background-info": "rgba(242, 201, 76, 0.08)",
+    "--color-background-danger": "rgba(204, 107, 107, 0.12)",
+    "--color-background-success": "rgba(107, 171, 124, 0.1)",
+    "--color-background-warning": "rgba(242, 201, 76, 0.12)",
+    "--color-sidebar-background": "#151515",
+    "--color-sidebar-hover-background": "#202020",
+    "--color-sidebar-active-background": "#232323",
+    "--color-sidebar-active-text": "#F5F5F5",
+    "--color-user-bubble-background": "#232323",
+    "--color-user-bubble-text": "#F5F5F5",
+    "--color-accent-highlight": "#F2C94C",
+    "--color-text-primary": "#F5F5F5",
+    "--color-text-secondary": "#828282",
+    "--color-text-tertiary": "#5F5F5F",
+    "--color-text-info": "#F2C94C",
+    "--color-text-danger": "#D36F6F",
+    "--color-text-success": "#7DB28A",
+    "--color-text-warning": "#F2C94C",
+    "--color-border-tertiary": "rgba(255, 255, 255, 0.06)",
+    "--color-border-secondary": "rgba(255, 255, 255, 0.1)",
+    "--color-border-primary": "rgba(255, 255, 255, 0.18)",
+    "--color-border-info": "rgba(242, 201, 76, 0.55)",
+    "--color-focus-ring": "rgba(242, 201, 76, 0.2)",
+    "--color-button-hover-background": "rgba(255, 255, 255, 0.04)",
   },
 };
 
@@ -85,10 +85,7 @@ function resolveTheme(mode: ThemeMode): Theme {
 }
 
 function detectThemeMode(): ThemeMode {
-  if (typeof window === "undefined") return "system";
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === "light" || stored === "dark" || stored === "system") return stored;
-  return "system";
+  return "dark";
 }
 
 function applyTheme(theme: Theme) {
@@ -105,14 +102,15 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [themeMode, setThemeModeState] = useState<ThemeMode>("system");
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [themeMode, setThemeModeState] = useState<ThemeMode>("dark");
+  const [theme, setThemeState] = useState<Theme>("dark");
 
   useEffect(() => {
     const nextMode = detectThemeMode();
     const nextTheme = resolveTheme(nextMode);
     setThemeModeState(nextMode);
     setThemeState(nextTheme);
+    localStorage.setItem(STORAGE_KEY, "dark");
     applyTheme(nextTheme);
   }, []);
 

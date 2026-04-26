@@ -15,8 +15,17 @@
 
 ### 总览类
 
+- `phase1-closeout.md`  
+  Phase 1 正式收尾文档，记录已完成项、验证结果和本地运行方式。
+
+- `phase2-kickoff.md`  
+  Phase 2 起步文档，记录文档资产建模、上传接口和本地验证方式。
+
 - `frontend-next-migration.md`  
   前端迁移路线，说明为什么保留 `frontend/`、为什么未来转向 `frontend-next/`。
+
+- `frontend-redesign-blueprint.md`  
+  前端改版草图，定义问答、工作区、数据仓三个模块的页面职责、结构和文案精简原则。
 
 ### 模块说明
 

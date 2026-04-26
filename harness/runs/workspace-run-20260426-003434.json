@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-04-26T00:34:34",
+  "category": "workspace",
+  "total": 2,
+  "passed": 2,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "workspace_orders_users_join_overview",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The analysis joined the orders and users tables (via user_id) and summarized order counts by VIP level (user segment). Key findings:\n\n- **Total Users**: 120 users, evenly distributed across 3 VIP levels (40 users each).\n- **VIP L1**: 1,310 paid orders, avg 32.75 orders/user, total revenue ¥1,056,013.25, avg order value ¥806.12\n- **VIP L2**: 1,300 paid orders, avg 32.50 orders/user, total revenue ¥1,033,366.00, avg order value ¥794.90\n- **VIP L3**: 1,300 paid orders, avg 32.50 orders/user, total revenue ¥1,113,379.25, avg order value ¥856.45\n\nAll three VIP segments show very similar purchasing behavior with roughly 32-33 orders per user and ~¥800 avg order value. VIP L3 has a slightly higher average order value (¥856.45) and total revenue, while VIP L1 has a marginally higher order frequency. The data appears to be synthetically balanced across segments.",
+        "rows": 3,
+        "artifactId": 18
+      }
+    },
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "## Traffic & Orders Combined Summary (Jul-Dec 2025)\n\n### Overall Performance\nOver 6 months, the platform generated **4,188,516 total revenue** from **5,130 orders** across **60 products** and **4 channels**, with **1,678,835 total UV** and **~2,804,380 total PV**.\n\n### Channel Performance Comparison\n| Channel | Total PV | Total UV | Orders | Revenue | Conv. Rate | Rev/Visitor |\n|---------|----------|----------|--------|---------|-----------|-------------|\n| **ads** | 700,850 | 420,576 | 1,305 | **$1,083,806** | 0.31% | $2.58 |\n| **referral** | 701,830 | 421,141 | 1,305 | **$1,069,619** | 0.31% | $2.54 |\n| **social** | 701,470 | 413,926 | 1,260 | $1,025,724 | 0.30% | $2.48 |\n| **organic** | 700,230 | 413,192 | 1,260 | $1,009,367 | 0.30% | $2.44 |\n\n**Key Insights:**\n- **Ads & referral channels** generate the highest revenue (~$1.08M and ~$1.07M respectively) and best conversion rates (0.31%).\n- **Social & organic** slightly lag behind in revenue and conversion.\n- **Revenue per visitor** is highest for ads ($2.58) and lowest for organic ($2.44), suggesting ad campaigns effectively attract higher-value customers.\n- All channels show similar bounce rates (~28.5%) and traffic volumes, indicating the traffic quality is consistent across channels.\n\n### Monthly Trend Highlights\n- Revenue fluctuated monthly from ~$691K (July) to ~$660K (December), with a peak in August (~$714K).\n- Conversion rates declined mid-period (Sept-Oct ~0.29%) but recovered in Dec (~0.34%).\n- Referral channel showed the most consistent growth in orders and revenue over time.",
+        "rows": 4,
+        "artifactId": 19
+      }
+    }
+  ]
+}

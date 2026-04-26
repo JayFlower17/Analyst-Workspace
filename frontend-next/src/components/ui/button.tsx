@@ -8,11 +8,11 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "border-[color:var(--color-border-secondary)] bg-transparent text-[color:var(--color-text-primary)] hover:border-[color:var(--color-border-secondary)] hover:bg-[color:var(--color-button-hover-background)]",
+          "border-[color:rgba(242,201,76,0.32)] bg-[color:var(--color-accent-highlight)] text-[#121212] hover:border-[color:rgba(242,201,76,0.42)] hover:bg-[#f5cf62]",
         outline:
-          "border-[color:var(--color-border-secondary)] bg-transparent text-[color:var(--color-text-primary)] hover:border-[color:var(--color-border-secondary)] hover:bg-[color:var(--color-button-hover-background)]",
+          "border-[color:var(--color-border-secondary)] bg-transparent text-[color:var(--color-text-primary)] hover:border-[color:rgba(242,201,76,0.3)] hover:bg-[color:var(--color-button-hover-background)]",
         secondary:
-          "border-[color:var(--color-border-secondary)] bg-transparent text-[color:var(--color-text-primary)] hover:border-[color:var(--color-border-secondary)] hover:bg-[color:var(--color-button-hover-background)]",
+          "border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-secondary)] text-[color:var(--color-text-primary)] hover:border-[color:var(--color-border-secondary)] hover:bg-[color:var(--color-sidebar-hover-background)]",
         ghost:
           "border-transparent bg-transparent text-[color:var(--color-text-secondary)] hover:bg-[color:var(--color-button-hover-background)] hover:text-[color:var(--color-text-primary)]",
         destructive:

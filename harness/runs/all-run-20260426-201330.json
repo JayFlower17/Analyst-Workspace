@@ -1,0 +1,93 @@
+{
+  "generated_at": "2026-04-26T20:13:30",
+  "category": "all",
+  "total": 6,
+  "passed": 6,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "structured_employees_department_summary",
+      "category": "structured",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "技术部拥有最多的员工（4人），其次是市场部、销售部和财务部（各3人），人事部员工最少（2人）。整体部门人员分布较为均衡。",
+        "rows": 5,
+        "artifactId": 39
+      }
+    },
+    {
+      "case_id": "structured_sales_monthly_rollup",
+      "category": "structured",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The data covers only January 2024, with total sales of ¥116,780 for the month. Since only one month of data is available, a month-over-month comparison is not possible. The total sales figure represents all orders combined for January 2024.",
+        "rows": 1,
+        "artifactId": 40
+      }
+    },
+    {
+      "case_id": "structured_website_traffic_top_source",
+      "category": "structured",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The dataset does not contain a 'traffic source' or 'visits' column. Using the closest available data, I analyzed total sales quantity by region as a proxy. The top-ranked region is 华东 (Eastern China) with 1,330 units sold, followed by 华南 (Southern China) with 885 units, and 华北 (Northern China) with 830 units. 华东 leads significantly with about 44% of total sales volume.",
+        "rows": 3,
+        "artifactId": 41
+      }
+    },
+    {
+      "case_id": "workspace_orders_users_join_overview",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "Joined the users and orders tables to summarize order counts by user segment. Key findings across 4 segmentation dimensions:\n\n1. **By VIP Level (L1/L2/L3)**: Each level has 40 users and 1,710 orders, with identical orders-per-user (42.75). Revenue is slightly higher for L3 (1,456,358.5) vs L1 (1,367,439.5) and L2 (1,364,718.0).\n\n2. **By Region**: All 5 regions (华中, 华东, 西南, 华南, 华北) are perfectly balanced — 24 users each, 1,026 orders each, 42.75 orders/user, and identical revenue (837,703.2).\n\n3. **By Gender**: Male users (60 users, 2,610 orders, 43.5 avg) slightly outperform female users (60 users, 2,520 orders, 42.0 avg) in both order count and revenue (2,528,817.5 vs 1,659,698.5).\n\n4. **By Signup Channel**: Referral and organic channels have higher orders-per-user (43.5) compared to ads and social (42.0). Referral generates the highest revenue (1,315,482.5).\n\nThe data shows a highly uniform distribution across VIP levels and regions, suggesting balanced user allocation, while gender and signup channel show more meaningful differentiation.",
+        "rows": 14,
+        "artifactId": 42
+      }
+    },
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "## Traffic & Orders Combined Summary\n\n### Overall Performance (Full Period)\n- **Total Page Views**: 2,804,380 | **Unique Visitors**: 1,668,835\n- **Total Orders**: 5,130 | **Items Sold**: 12,870\n- **Total Revenue**: ¥4,188,516 | **Unique Buyers**: 120\n- **Average Order Value**: ~¥816.50\n- **Visitor-to-Order Conversion Rate**: 0.31%\n- **Average Bounce Rate**: 28%\n\n### Monthly Trend (July–December 2025)\n- **Traffic grew steadily** from 421K PVs (July) to a peak of 514K (Oct), then declined to 406K (Dec).\n- **Revenue** followed a similar pattern: ¥691K (Jul) → ¥720K (Sep, peak) → ¥661K (Dec).\n- **Conversion rate** declined from 0.34% (Jul) to 0.29% (Sep/Oct), then recovered to 0.33% (Dec).\n- **Revenue per visitor** dropped from ¥2.76 (Jul) to ¥2.34 (Oct), then rebounded to ¥2.72 (Dec), suggesting better monetization of traffic in later months.\n\n### Channel Performance\n- **ads** and **referral** channels generated the highest revenue (~¥1.08M each), followed by social (~¥1.03M) and organic (~¥1.01M).\n- **Conversion rates** are consistent across channels (0.30%–0.31%), indicating balanced channel performance.\n- **Ads & referral** each drove ~420K UVs with ~1,305 orders, while social & organic drove ~413K UVs with ~1,260 orders.\n\n### Key Insights\n1. **Traffic increases didn't linearly convert to orders** — peak traffic months (Sep-Oct) had lower conversion rates, suggesting traffic quality issues.\n2. **The funnel shows**: 1.67M visitors → 683K clicks (41%) → 191K add-to-cart (11.5%) → 5,130 orders (0.31%). Major drop-off is between click and add-to-cart.\n3. **Revenue per visitor** improved in Dec despite lower traffic, indicating better targeting or promotions.",
+        "rows": 6,
+        "artifactId": 43
+      }
+    },
+    {
+      "case_id": "hybrid_workspace_orders_users_note_priority",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The analysis joined the orders and users tables to summarize order metrics by user VIP segment. There are three VIP levels (L1, L2, L3), each with 40 users and exactly 1,710 orders per segment, resulting in a consistent 42.75 orders per user across all levels. However, in terms of revenue, L3 (the highest VIP level) leads with total revenue of ¥1,456,358.50 and the highest average order value of ¥851.67, compared to L2 (¥1,364,718.00, avg ¥798.08) and L1 (¥1,367,439.50, avg ¥799.67). According to the workspace analysis note, the L3 segment — being the highest-tier VIP level — should be highlighted first as the highest-priority customer cohort due to its superior revenue contribution and higher average transaction value.",
+        "rows": 3,
+        "artifactId": 44
+      }
+    }
+  ]
+}

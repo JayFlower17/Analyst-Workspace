@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-04-26T15:18:38",
+  "category": "structured",
+  "total": 3,
+  "passed": 3,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "structured_employees_department_summary",
+      "category": "structured",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "员工按部门统计结果显示：技术部人数最多（4人），财务部、市场部和销售部各有3人，人事部人数最少（2人）。总计15名员工分布在5个部门中。",
+        "rows": 5,
+        "artifactId": 21
+      }
+    },
+    {
+      "case_id": "structured_sales_monthly_rollup",
+      "category": "structured",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The data covers only January 2024 (from 2024-01-01 to 2024-01-10). The total sales for January 2024 is ¥116,780 across all orders.",
+        "rows": 1,
+        "artifactId": 22
+      }
+    },
+    {
+      "case_id": "structured_website_traffic_top_source",
+      "category": "structured",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The dataset (data_sales_csv_1768450078324) does not contain a 'traffic source' or 'visits' column. The table contains sales data with columns: product, category, price, quantity, sale_date, and region. The closest meaningful interpretation is to treat 'region' as traffic sources and 'quantity' as visits (units sold). Ranked by total quantity sold: 华东 (East China) leads with 1,330 units, followed by 华南 (South China) with 885 units, and 华北 (North China) with 830 units.",
+        "rows": 3,
+        "artifactId": 23
+      }
+    }
+  ]
+}

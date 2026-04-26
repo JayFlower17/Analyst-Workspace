@@ -19,7 +19,7 @@ The project is currently in a transition phase:
 - `frontend-next/` is the future frontend mainline
 - `frontend/` is still kept as a migration-period fallback
 - the current stable core is multi-dataset structured analysis
-- unstructured document analysis is a planned next-stage capability, not a fully finished feature yet
+- unstructured document ingestion and retrieval have started, and minimal document-aware workspace analysis is now connected
 
 ---
 
@@ -30,6 +30,7 @@ frontend-next/    Next.js frontend mainline
 frontend/         Legacy Vue frontend
 backend/          Spring Boot backend
 python-executor/  FastAPI Python execution service
+harness/          Minimum benchmark and evaluation harness
 test-data/        Example datasets
 docs/             Product, architecture, and roadmap documents
 ```
@@ -67,7 +68,14 @@ npm run dev
 
 ```bash
 cd backend
-mvn spring-boot:run
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+### Backend With Vector Retrieval
+
+```bash
+cd backend
+mvn spring-boot:run -Dspring-boot.run.profiles=local,local-vector
 ```
 
 ### Python Executor
@@ -90,6 +98,12 @@ npm run lint
 npm run build
 ```
 
+For the minimum Phase 1 harness:
+
+```bash
+python harness/run_benchmarks.py --base-url http://127.0.0.1:8080/api --category structured
+```
+
 ---
 
 ## Documentation
@@ -97,6 +111,8 @@ npm run build
 Start here:
 
 - [docs/README.md](docs/README.md)
+- [docs/phase1-closeout.md](docs/phase1-closeout.md)
+- [docs/phase2-kickoff.md](docs/phase2-kickoff.md)
 - [docs/frontend-next-migration.md](docs/frontend-next-migration.md)
 - [docs/task-roadmap.md](docs/task-roadmap.md)
 

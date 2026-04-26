@@ -2,11 +2,18 @@
 
 import type {
   AnalysisResult,
+  Artifact,
   AuthResponse,
   ApiEnvelope,
   ChatMessage,
   ChatSession,
   Dataset,
+  DatasetInfo,
+  DatasetPreviewRow,
+  DatasetRelation,
+  DocumentAsset,
+  DocumentChunk,
+  DocumentSearchResult,
   MessageResponse,
   Workspace,
 } from "@/lib/types";
@@ -107,8 +114,23 @@ export const workplaceApi = {
   listWorkspaces() {
     return request<ApiEnvelope<Workspace[]>>("/groups");
   },
+  createWorkspace(name: string, description?: string) {
+    return request<ApiEnvelope<Workspace>>("/groups", {
+      method: "POST",
+      body: JSON.stringify({ name, description }),
+    });
+  },
+  getWorkspace(groupId: number) {
+    return request<ApiEnvelope<Workspace>>(`/groups/${groupId}`);
+  },
   getDatasets(groupId: number) {
     return request<ApiEnvelope<Dataset[]>>(`/groups/${groupId}/datasets`);
+  },
+  updateDescription(groupId: number, descriptionMd: string) {
+    return request<ApiEnvelope<Workspace>>(`/groups/${groupId}/description`, {
+      method: "PUT",
+      body: JSON.stringify({ descriptionMd }),
+    });
   },
   analyze(groupId: number, query: string, focusDatasetIds: number[] = []) {
     return request<AnalysisResult>("/analysis/query", {
@@ -117,7 +139,36 @@ export const workplaceApi = {
     });
   },
   getRelations(groupId: number) {
-    return request<ApiEnvelope<unknown[]>>(`/groups/${groupId}/relations`);
+    return request<ApiEnvelope<DatasetRelation[]>>(`/groups/${groupId}/relations`);
+  },
+  autoDetectRelations(groupId: number) {
+    return request<ApiEnvelope<DatasetRelation[]>>(`/groups/${groupId}/relations/auto-detect`, {
+      method: "POST",
+    });
+  },
+  createRelation(
+    groupId: number,
+    payload: Omit<DatasetRelation, "id" | "groupId">
+  ) {
+    return request<ApiEnvelope<DatasetRelation>>(`/groups/${groupId}/relations`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  updateRelation(
+    groupId: number,
+    relationId: number,
+    payload: Omit<DatasetRelation, "id" | "groupId">
+  ) {
+    return request<ApiEnvelope<DatasetRelation>>(`/groups/${groupId}/relations/${relationId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+  deleteRelation(groupId: number, relationId: number) {
+    return request<ApiEnvelope<MessageResponse>>(`/groups/${groupId}/relations/${relationId}`, {
+      method: "DELETE",
+    });
   },
 };
 
@@ -136,6 +187,26 @@ export const datasetApi = {
       body: form,
     });
   },
+  get(datasetId: number) {
+    return request<ApiEnvelope<Dataset>>(`/datasets/${datasetId}`);
+  },
+  getMetadata(datasetId: number) {
+    return request<ApiEnvelope<DatasetInfo>>(`/datasets/${datasetId}/metadata`);
+  },
+  updateDescription(datasetId: number, descriptionMd: string) {
+    return request<ApiEnvelope<Dataset>>(`/datasets/${datasetId}/description`, {
+      method: "PUT",
+      body: JSON.stringify({ descriptionMd }),
+    });
+  },
+  delete(datasetId: number) {
+    return request<ApiEnvelope<MessageResponse>>(`/datasets/${datasetId}`, {
+      method: "DELETE",
+    });
+  },
+  preview(datasetId: number, limit = 100) {
+    return request<ApiEnvelope<DatasetPreviewRow[]>>(`/analysis/preview/${datasetId}?limit=${limit}`);
+  },
 };
 
 export const authApi = {
@@ -150,5 +221,47 @@ export const authApi = {
       method: "POST",
       body: JSON.stringify({ username, email, password, confirmPassword }),
     });
+  },
+};
+
+export const documentApi = {
+  list(groupId: number) {
+    return request<ApiEnvelope<DocumentAsset[]>>(`/documents?groupId=${groupId}`);
+  },
+  upload(groupId: number, file: File, name?: string) {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("groupId", String(groupId));
+    if (name) form.append("name", name);
+    return request<ApiEnvelope<DocumentAsset>>("/documents/upload", {
+      method: "POST",
+      body: form,
+    });
+  },
+  getChunks(documentId: number) {
+    return request<ApiEnvelope<DocumentChunk[]>>(`/documents/${documentId}/chunks`);
+  },
+  search(groupId: number, query: string, topK = 5) {
+    const params = new URLSearchParams({
+      groupId: String(groupId),
+      query,
+      topK: String(topK),
+    });
+    return request<ApiEnvelope<DocumentSearchResult[]>>(`/documents/search?${params.toString()}`);
+  },
+  delete(documentId: number) {
+    return request<ApiEnvelope<MessageResponse>>(`/documents/${documentId}`, {
+      method: "DELETE",
+    });
+  },
+};
+
+export const artifactApi = {
+  recent({ sessionId, groupId, limit = 5 }: { sessionId?: number; groupId?: number; limit?: number }) {
+    const params = new URLSearchParams();
+    if (sessionId) params.set("sessionId", String(sessionId));
+    if (groupId) params.set("groupId", String(groupId));
+    params.set("limit", String(limit));
+    return request<ApiEnvelope<Artifact[]>>(`/artifacts/recent?${params.toString()}`);
   },
 };

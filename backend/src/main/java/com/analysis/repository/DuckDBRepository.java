@@ -22,6 +22,8 @@ import com.analysis.model.entity.ColumnMetadata;
 import com.analysis.model.entity.Dataset;
 import com.analysis.model.entity.DatasetGroup;
 import com.analysis.model.entity.DatasetRelation;
+import com.analysis.model.entity.DocumentAsset;
+import com.analysis.model.entity.DocumentChunk;
 import com.analysis.model.entity.AnalysisArtifact;
 import com.analysis.model.entity.ChatMessage;
 import com.analysis.model.entity.ChatSession;
@@ -151,6 +153,34 @@ public class DuckDBRepository {
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         )
                     """);
+            stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS meta_documents (
+                            id INTEGER PRIMARY KEY,
+                            group_id INTEGER,
+                            name VARCHAR,
+                            original_file_name VARCHAR,
+                            stored_path VARCHAR,
+                            file_type VARCHAR,
+                            mime_type VARCHAR,
+                            size_bytes BIGINT,
+                            processing_status VARCHAR,
+                            processing_error VARCHAR,
+                            chunk_count INTEGER,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """);
+            ensureMetaDocumentsChunkCountColumn(connection, stmt);
+            stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS meta_document_chunks (
+                            id INTEGER PRIMARY KEY,
+                            document_id INTEGER,
+                            chunk_index INTEGER,
+                            chunk_text VARCHAR,
+                            metadata_json VARCHAR,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """);
 
             stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_dataset_group START 1");
             stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_dataset START 1");
@@ -161,6 +191,8 @@ public class DuckDBRepository {
             stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_chat_message START 1");
             stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_chat_session_dataset START 1");
             stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_analysis_artifact START 1");
+            stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_document_asset START 1");
+            stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_document_chunk START 1");
         }
     }
 
@@ -198,6 +230,22 @@ public class DuckDBRepository {
             if (!rs.next()) {
                 stmt.execute("ALTER TABLE meta_datasets ADD COLUMN description_md VARCHAR");
                 log.info("Schema migration applied: meta_datasets.description_md added");
+            }
+        }
+    }
+
+    private void ensureMetaDocumentsChunkCountColumn(Connection connection, Statement stmt) throws SQLException {
+        String checkSql = """
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_name = 'meta_documents' AND column_name = 'chunk_count'
+                LIMIT 1
+                """;
+        try (PreparedStatement ps = connection.prepareStatement(checkSql);
+                ResultSet rs = ps.executeQuery()) {
+            if (!rs.next()) {
+                stmt.execute("ALTER TABLE meta_documents ADD COLUMN chunk_count INTEGER");
+                log.info("Schema migration applied: meta_documents.chunk_count added");
             }
         }
     }
@@ -699,6 +747,197 @@ public class DuckDBRepository {
         return null;
     }
 
+    public Long saveDocumentAsset(DocumentAsset asset) throws SQLException {
+        String sql = """
+                INSERT INTO meta_documents (
+                    id, group_id, name, original_file_name, stored_path, file_type,
+                    mime_type, size_bytes, processing_status, processing_error, chunk_count, created_at, updated_at
+                )
+                VALUES (nextval('seq_document_asset'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                RETURNING id
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, asset.getGroupId());
+            stmt.setString(2, asset.getName());
+            stmt.setString(3, asset.getOriginalFileName());
+            stmt.setString(4, asset.getStoredPath());
+            stmt.setString(5, asset.getFileType());
+            stmt.setString(6, asset.getMimeType());
+            if (asset.getSizeBytes() != null) {
+                stmt.setLong(7, asset.getSizeBytes());
+            } else {
+                stmt.setNull(7, Types.BIGINT);
+            }
+            stmt.setString(8, asset.getProcessingStatus());
+            stmt.setString(9, asset.getProcessingError());
+            if (asset.getChunkCount() != null) {
+                stmt.setInt(10, asset.getChunkCount());
+            } else {
+                stmt.setNull(10, Types.INTEGER);
+            }
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
+        }
+        return null;
+    }
+
+    public boolean updateDocumentAssetProcessing(Long documentId, String processingStatus, String processingError,
+            Integer chunkCount) throws SQLException {
+        String sql = """
+                UPDATE meta_documents
+                SET processing_status = ?,
+                    processing_error = ?,
+                    chunk_count = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, processingStatus);
+            stmt.setString(2, processingError);
+            if (chunkCount != null) {
+                stmt.setInt(3, chunkCount);
+            } else {
+                stmt.setNull(3, Types.INTEGER);
+            }
+            stmt.setLong(4, documentId);
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
+    public Long saveDocumentChunk(DocumentChunk chunk) throws SQLException {
+        String sql = """
+                INSERT INTO meta_document_chunks (
+                    id, document_id, chunk_index, chunk_text, metadata_json, created_at
+                )
+                VALUES (nextval('seq_document_chunk'), ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                RETURNING id
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, chunk.getDocumentId());
+            stmt.setInt(2, chunk.getChunkIndex());
+            stmt.setString(3, chunk.getChunkText());
+            stmt.setString(4, chunk.getMetadataJson());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
+        }
+        return null;
+    }
+
+    public DocumentAsset findDocumentAssetById(Long documentId) throws SQLException {
+        String sql = "SELECT * FROM meta_documents WHERE id = ?";
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, documentId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapDocumentAsset(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    public List<DocumentAsset> findDocumentAssetsByGroupId(Long groupId) throws SQLException {
+        List<DocumentAsset> documents = new ArrayList<>();
+        String sql = "SELECT * FROM meta_documents WHERE group_id = ? ORDER BY created_at DESC, id DESC";
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, groupId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    documents.add(mapDocumentAsset(rs));
+                }
+            }
+        }
+        return documents;
+    }
+
+    public List<DocumentChunk> findDocumentChunksByDocumentId(Long documentId) throws SQLException {
+        List<DocumentChunk> chunks = new ArrayList<>();
+        String sql = "SELECT * FROM meta_document_chunks WHERE document_id = ? ORDER BY chunk_index ASC, id ASC";
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, documentId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    chunks.add(mapDocumentChunk(rs));
+                }
+            }
+        }
+        return chunks;
+    }
+
+    public void deleteDocumentChunksByDocumentId(Long documentId) throws SQLException {
+        String sql = "DELETE FROM meta_document_chunks WHERE document_id = ?";
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, documentId);
+            stmt.executeUpdate();
+        }
+    }
+
+    public void deleteDocumentAssetById(Long documentId) throws SQLException {
+        String sql = "DELETE FROM meta_documents WHERE id = ?";
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, documentId);
+            stmt.executeUpdate();
+        }
+    }
+
+    public List<AnalysisArtifact> findRecentArtifactsBySessionId(Long sessionId, int limit) throws SQLException {
+        List<AnalysisArtifact> artifacts = new ArrayList<>();
+        String sql = """
+                SELECT *
+                FROM analysis_artifacts
+                WHERE session_id = ?
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, sessionId);
+            stmt.setInt(2, limit);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    artifacts.add(mapAnalysisArtifact(rs));
+                }
+            }
+        }
+        return artifacts;
+    }
+
+    public List<AnalysisArtifact> findRecentArtifactsByGroupId(Long groupId, int limit) throws SQLException {
+        List<AnalysisArtifact> artifacts = new ArrayList<>();
+        String sql = """
+                SELECT *
+                FROM analysis_artifacts
+                WHERE group_id = ?
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, groupId);
+            stmt.setInt(2, limit);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    artifacts.add(mapAnalysisArtifact(rs));
+                }
+            }
+        }
+        return artifacts;
+    }
+
     public List<ColumnMetadata> findColumnsByDatasetId(Long datasetId) throws SQLException {
         List<ColumnMetadata> columns = new ArrayList<>();
         String sql = "SELECT * FROM meta_columns WHERE dataset_id = ?";
@@ -885,6 +1124,46 @@ public class DuckDBRepository {
             relation.setUpdatedAt(updatedAt.toLocalDateTime());
         }
         return relation;
+    }
+
+    private DocumentAsset mapDocumentAsset(ResultSet rs) throws SQLException {
+        DocumentAsset asset = new DocumentAsset();
+        asset.setId(rs.getLong("id"));
+        asset.setGroupId(getNullableLong(rs, "group_id"));
+        asset.setName(rs.getString("name"));
+        asset.setOriginalFileName(rs.getString("original_file_name"));
+        asset.setStoredPath(rs.getString("stored_path"));
+        asset.setFileType(rs.getString("file_type"));
+        asset.setMimeType(rs.getString("mime_type"));
+        asset.setSizeBytes(getNullableLong(rs, "size_bytes"));
+        asset.setProcessingStatus(rs.getString("processing_status"));
+        asset.setProcessingError(rs.getString("processing_error"));
+        Object chunkCount = rs.getObject("chunk_count");
+        asset.setChunkCount(chunkCount instanceof Number number ? number.intValue() : null);
+        Timestamp createdAt = rs.getTimestamp("created_at");
+        if (createdAt != null) {
+            asset.setCreatedAt(createdAt.toLocalDateTime());
+        }
+        Timestamp updatedAt = rs.getTimestamp("updated_at");
+        if (updatedAt != null) {
+            asset.setUpdatedAt(updatedAt.toLocalDateTime());
+        }
+        return asset;
+    }
+
+    private DocumentChunk mapDocumentChunk(ResultSet rs) throws SQLException {
+        DocumentChunk chunk = new DocumentChunk();
+        chunk.setId(rs.getLong("id"));
+        chunk.setDocumentId(getNullableLong(rs, "document_id"));
+        Object chunkIndex = rs.getObject("chunk_index");
+        chunk.setChunkIndex(chunkIndex instanceof Number number ? number.intValue() : null);
+        chunk.setChunkText(rs.getString("chunk_text"));
+        chunk.setMetadataJson(rs.getString("metadata_json"));
+        Timestamp createdAt = rs.getTimestamp("created_at");
+        if (createdAt != null) {
+            chunk.setCreatedAt(createdAt.toLocalDateTime());
+        }
+        return chunk;
     }
 
     private ChatSession mapChatSession(ResultSet rs) throws SQLException {

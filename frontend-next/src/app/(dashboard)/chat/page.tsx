@@ -3,11 +3,10 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowUp, FolderUp, Loader2, Rocket, Upload } from "lucide-react";
-import { chatApi } from "@/lib/api/client";
-import type { AnalysisResult, ChatMessage, ChatSession, Dataset } from "@/lib/types";
+import { ArrowUp, FolderUp, Loader2, Upload } from "lucide-react";
+import { artifactApi, chatApi } from "@/lib/api/client";
+import type { AnalysisResult, Artifact, ChatMessage, ChatSession, Dataset } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "@/components/common/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -17,22 +16,61 @@ import { useLanguage } from "@/components/providers/language-provider";
 
 function formatTime(raw: string | undefined, localeTag: string) {
   if (!raw) return "";
-  const d = new Date(raw);
-  if (Number.isNaN(d.valueOf())) return "";
-  return d.toLocaleString(localeTag, { hour: "2-digit", minute: "2-digit" });
+  const date = new Date(raw);
+  if (Number.isNaN(date.valueOf())) return "";
+  return date.toLocaleString(localeTag, {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-function parseUserLabel() {
-  if (typeof window === "undefined") return "AI";
-  const rawUser = localStorage.getItem("user");
-  if (!rawUser) return "AI";
-
+function parsePreview(value?: string | null) {
+  if (!value) return [];
   try {
-    const parsed = JSON.parse(rawUser) as { username?: string; email?: string };
-    return (parsed.username || parsed.email || "AI").slice(0, 2).toUpperCase() || "AI";
+    const parsed = JSON.parse(value) as Record<string, unknown>[];
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return "AI";
+    return [];
   }
+}
+
+function ResultTable({ rows }: { rows: Record<string, unknown>[] }) {
+  const columns = rows.length ? Object.keys(rows[0]) : [];
+  if (!rows.length) return null;
+
+  return (
+    <div className="mt-5 overflow-hidden rounded-[14px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)]">
+      <div className="max-h-[280px] overflow-auto">
+        <table className="min-w-full border-collapse text-left text-sm">
+          <thead className="sticky top-0 bg-[color:#171717]">
+            <tr>
+              {columns.map((column) => (
+                <th
+                  key={column}
+                  className="border-b border-[color:var(--color-border-tertiary)] px-4 py-3 font-medium text-[color:var(--color-text-primary)]"
+                >
+                  {column}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.slice(0, 10).map((row, rowIndex) => (
+              <tr key={rowIndex} className="border-t border-[color:var(--color-border-tertiary)]">
+                {columns.map((column) => (
+                  <td key={column} className="px-4 py-3 text-[color:var(--color-text-secondary)]">
+                    {String(row[column] ?? "")}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 function ChatPageContent() {
@@ -41,37 +79,30 @@ function ChatPageContent() {
   const { t, localeTag } = useLanguage();
 
   const sessionParam = useMemo(() => {
-    const raw = searchParams.get("session");
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    const raw = Number(searchParams.get("session"));
+    return Number.isFinite(raw) && raw > 0 ? raw : null;
   }, [searchParams]);
 
-  const [userLabel, setUserLabel] = useState("AI");
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [selectedDatasetId, setSelectedDatasetId] = useState<number | undefined>(undefined);
   const [input, setInput] = useState("");
-  const [analyzing, setAnalyzing] = useState(false);
+  const [lastResult, setLastResult] = useState<AnalysisResult | null>(null);
+  const [recentArtifacts, setRecentArtifacts] = useState<Artifact[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [lastResult, setLastResult] = useState<AnalysisResult | null>(null);
-
   const [promoteOpen, setPromoteOpen] = useState(false);
   const [workspaceName, setWorkspaceName] = useState("");
   const [workspaceDesc, setWorkspaceDesc] = useState("");
   const [promoting, setPromoting] = useState(false);
+  const [showCode, setShowCode] = useState(false);
 
-  const [assistantTyping, setAssistantTyping] = useState(false);
-  const [streamText, setStreamText] = useState("");
-  const streamTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const messageBottomRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const activeSession = sessions.find((session) => session.id === activeSessionId);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const initialize = useCallback(async () => {
     setLoadingSessions(true);
@@ -85,50 +116,20 @@ function ChatPageContent() {
     }
   }, [t]);
 
-  useEffect(() => {
-    setUserLabel(parseUserLabel());
-    void initialize();
-    return () => {
-      if (streamTimerRef.current) {
-        clearInterval(streamTimerRef.current);
-      }
-    };
-  }, [initialize]);
-
-  useEffect(() => {
-    messageBottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, streamText, assistantTyping]);
-
-  useEffect(() => {
-    if (loadingSessions) return;
-
-    if (!sessions.length) {
-      setActiveSessionId(null);
-      setMessages([]);
-      setDatasets([]);
-      setLastResult(null);
-      return;
-    }
-
-    if (sessionParam && sessions.some((session) => session.id === sessionParam)) {
-      setActiveSessionId(sessionParam);
-      return;
-    }
-
-    const fallbackSessionId = sessions[0].id;
-    setActiveSessionId(fallbackSessionId);
-    router.replace(`/chat?session=${fallbackSessionId}`);
-  }, [loadingSessions, router, sessionParam, sessions]);
-
   const loadSessionPayload = useCallback(
     async (sessionId: number) => {
       setLoadingMessages(true);
       try {
-        const [mRes, dRes] = await Promise.all([chatApi.getMessages(sessionId), chatApi.getDatasets(sessionId)]);
-        setMessages(mRes.data ?? []);
-        const nextDatasets = dRes.data ?? [];
+        const [messageRes, datasetRes, artifactRes] = await Promise.all([
+          chatApi.getMessages(sessionId),
+          chatApi.getDatasets(sessionId),
+          artifactApi.recent({ sessionId, limit: 8 }),
+        ]);
+        const nextDatasets = datasetRes.data ?? [];
+        setMessages(messageRes.data ?? []);
         setDatasets(nextDatasets);
-        if (selectedDatasetId && !nextDatasets.some((item) => item.id === selectedDatasetId)) {
+        setRecentArtifacts(artifactRes.data ?? []);
+        if (selectedDatasetId && !nextDatasets.some((dataset) => dataset.id === selectedDatasetId)) {
           setSelectedDatasetId(undefined);
         }
       } catch (error) {
@@ -139,6 +140,37 @@ function ChatPageContent() {
     },
     [selectedDatasetId, t]
   );
+
+  useEffect(() => {
+    void initialize();
+  }, [initialize]);
+
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, lastResult, recentArtifacts]);
+
+  useEffect(() => {
+    if (loadingSessions) return;
+
+    if (!sessions.length) {
+      setActiveSessionId(null);
+      setMessages([]);
+      setDatasets([]);
+      setRecentArtifacts([]);
+      setLastResult(null);
+      return;
+    }
+
+    if (sessionParam && sessions.some((session) => session.id === sessionParam)) {
+      setActiveSessionId(sessionParam);
+      return;
+    }
+
+    const fallback = sessions[0].id;
+    setActiveSessionId(fallback);
+    router.replace(`/chat?session=${fallback}`);
+  }, [loadingSessions, router, sessionParam, sessions]);
 
   useEffect(() => {
     if (!activeSessionId) return;
@@ -173,22 +205,18 @@ function ChatPageContent() {
     }
 
     setAnalyzing(true);
-    setAssistantTyping(false);
-    setStreamText("");
     setMessages((prev) => [...prev, { id: Date.now(), role: "USER", content: query, sessionId }]);
     setInput("");
+    setShowCode(false);
 
     try {
-      const res = await chatApi.analyze(sessionId, query, selectedDatasetId);
-      setLastResult(res);
-      if (res.success) {
-        const summary = res.summary?.trim() || t("analysis_complete");
-        await runTypewriter(summary);
-        await initialize();
-        await loadSessionPayload(sessionId);
-      } else {
-        toast.error(res.message || t("analysis_failed"));
+      const result = await chatApi.analyze(sessionId, query, selectedDatasetId);
+      setLastResult(result);
+      if (!result.success) {
+        toast.error(result.message || t("analysis_failed"));
       }
+      await initialize();
+      await loadSessionPayload(sessionId);
     } catch (error) {
       toast.error((error as Error).message || t("analysis_request_failed"));
     } finally {
@@ -196,38 +224,20 @@ function ChatPageContent() {
     }
   }
 
-  function runTypewriter(text: string) {
-    return new Promise<void>((resolve) => {
-      if (streamTimerRef.current) clearInterval(streamTimerRef.current);
-      setAssistantTyping(true);
-      setStreamText("");
-      let index = 0;
-      streamTimerRef.current = setInterval(() => {
-        index += 1;
-        setStreamText(text.slice(0, index));
-        if (index >= text.length) {
-          if (streamTimerRef.current) clearInterval(streamTimerRef.current);
-          streamTimerRef.current = null;
-          setAssistantTyping(false);
-          resolve();
-        }
-      }, 16);
-    });
-  }
-
   async function triggerUpload(file?: File) {
     const sessionId = await ensureSession();
     if (!sessionId || !file) return;
+
     setUploading(true);
     try {
       const res = await chatApi.uploadDataset(sessionId, file, file.name);
-      if (res.success) {
-        toast.success(t("dataset_uploaded_chat"));
-        await initialize();
-        await loadSessionPayload(sessionId);
-      } else {
+      if (!res.success) {
         toast.error(res.message || t("upload_failed"));
+        return;
       }
+      toast.success(t("dataset_uploaded_chat"));
+      await initialize();
+      await loadSessionPayload(sessionId);
     } catch (error) {
       toast.error((error as Error).message || t("upload_failed"));
     } finally {
@@ -241,15 +251,16 @@ function ChatPageContent() {
       toast.error(t("workspace_name_required"));
       return;
     }
+
     setPromoting(true);
     try {
       const res = await chatApi.promote(activeSessionId, workspaceName.trim(), workspaceDesc.trim());
-      if (res.success && res.data?.id) {
-        toast.success(t("promoted_to_workplace", { name: res.data.name }));
-        window.location.href = `/workspace?groupId=${res.data.id}`;
-      } else {
+      if (!res.success || !res.data?.id) {
         toast.error(res.message || t("promotion_failed"));
+        return;
       }
+      toast.success(t("promoted_to_workplace", { name: res.data.name }));
+      window.location.href = `/workspace?groupId=${res.data.id}`;
     } catch (error) {
       toast.error((error as Error).message || t("promotion_failed"));
     } finally {
@@ -257,133 +268,240 @@ function ChatPageContent() {
     }
   }
 
-  return (
-    <div className="flex min-h-[calc(100vh-4.5rem)] flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="min-w-0 truncate text-[15px] font-medium text-[color:var(--color-text-primary)]">
-          {activeSession?.title || t("new_chat")}
-        </h2>
-        <div className="flex items-center gap-2">
-          <ThemeToggle iconOnly />
-          <div className="grid size-8 place-items-center rounded-full bg-[color:var(--color-background-info)] text-[13px] font-medium text-[color:var(--color-text-info)]">
-            {userLabel}
-          </div>
-        </div>
-      </div>
+  const previewArtifacts = recentArtifacts.slice(0, 4);
+  const isEmptyState = !loadingMessages && !messages.length && !lastResult;
+  const hasConversation = messages.length > 0 || !!lastResult;
 
-      {activeSessionId ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            className="control-select max-w-[280px] flex-1"
-            value={selectedDatasetId ?? ""}
-            onChange={(e) => {
-              const next = Number(e.target.value);
-              setSelectedDatasetId(Number.isFinite(next) && next > 0 ? next : undefined);
-            }}
-          >
-            <option value="">{t("auto_dataset_selection")}</option>
-            {datasets.map((dataset) => (
-              <option key={dataset.id} value={dataset.id}>
-                {dataset.name} ({dataset.tableName})
-              </option>
-            ))}
-          </select>
-          <Button variant="secondary" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
-            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            {t("upload")}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              if (!datasets.length) {
-                toast.error(t("upload_dataset_first"));
-                return;
-              }
-              setWorkspaceName(`${t("workspace_prefix")}-${new Date().toISOString().slice(0, 10)}`);
-              setWorkspaceDesc("");
-              setPromoteOpen(true);
-            }}
-          >
-            <Rocket className="h-4 w-4" />
-            {t("promote_to_workplace")}
-          </Button>
-        </div>
-      ) : null}
-
-      <div className="surface-card flex flex-1 flex-col gap-6">
-        <div className="flex-1 space-y-4">
-          {loadingSessions || (activeSessionId && loadingMessages) ? (
-            <>
-              <Skeleton className="h-16 w-3/4" />
-              <Skeleton className="ml-auto h-16 w-2/3" />
-              <Skeleton className="h-12 w-1/2" />
-            </>
-          ) : messages.length ? (
-            messages.map((message) => (
-              <div key={message.id} className={cn("flex", message.role.toUpperCase() === "USER" ? "justify-end" : "justify-start")}>
-                <div
-                  className={cn(
-                    "text-[14px] leading-[1.7]",
-                    message.role.toUpperCase() === "USER"
-                      ? "max-w-[60%] rounded-[10px] bg-[color:var(--color-user-bubble-background)] px-[13px] py-[9px] font-normal text-[color:var(--color-user-bubble-text)]"
-                      : "max-w-[80%] bg-transparent px-0 py-0 font-normal text-[color:var(--color-text-primary)]"
-                  )}
-                >
-                  {message.content}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="py-10">
-              <p className="text-[15px] font-medium text-[color:var(--color-text-primary)]">{t("chat_welcome_title")}</p>
-              <p className="mt-2 text-[14px] leading-[1.6] text-[color:var(--color-text-secondary)]">{t("chat_welcome_body")}</p>
-            </div>
-          )}
-
-          {assistantTyping ? (
-            <div className="flex justify-start">
-              <div className="max-w-[80%] bg-transparent px-0 py-0 text-[14px] leading-[1.7] font-normal text-[color:var(--color-text-primary)]">
-                {streamText}
-                <span className="ml-1 inline-block animate-pulse">▋</span>
-              </div>
-            </div>
-          ) : null}
-
-          {lastResult?.generatedCodeOrSql || lastResult?.generatedSql ? (
-            <div className="space-y-2">
-              <p className="text-[12px] font-normal text-[color:var(--color-text-secondary)]">{t("latest_result_snapshot")}</p>
-              <pre className="overflow-x-auto whitespace-pre-wrap rounded-[var(--border-radius-md)] bg-[color:var(--color-background-secondary)] p-4 text-[13px] leading-6 text-[color:var(--color-text-primary)]">
-                {lastResult.generatedCodeOrSql || lastResult.generatedSql}
-              </pre>
-            </div>
-          ) : null}
-
-          <div ref={messageBottomRef} />
-        </div>
-      </div>
-
-      <div className="surface-card space-y-4">
+  const composer = (
+    <div className="mx-auto w-full max-w-[760px]">
+      <div className="rounded-[24px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] bg-[color:#171717] px-5 pb-4 pt-4 shadow-[0_8px_40px_rgba(0,0,0,0.26)]">
         <Textarea
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={t("ask_agent_placeholder")}
-          className="min-h-[120px] resize-none"
-          onKeyDown={(e) => {
-            if (e.ctrlKey && e.key === "Enter") {
-              e.preventDefault();
+          onChange={(event) => setInput(event.target.value)}
+          placeholder="输入分析问题..."
+          className="min-h-[84px] resize-none border-none bg-transparent px-0 py-0 text-[15px] shadow-none outline-none focus:border-none focus:outline-none focus-visible:border-transparent focus-visible:shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          onKeyDown={(event) => {
+            if (event.ctrlKey && event.key === "Enter") {
+              event.preventDefault();
               void sendMessage();
             }
           }}
         />
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="mono-note">
-            {activeSession ? formatTime(activeSession.updatedAt, localeTag) : t("ctrl_enter_run")}
-          </span>
-          <Button onClick={() => void sendMessage()} disabled={analyzing || !input.trim()}>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              className="chat-dataset-select h-9 rounded-[10px] border-none bg-transparent px-2 text-sm text-[color:var(--color-text-secondary)] outline-none ring-0 transition-colors"
+              value={selectedDatasetId ?? ""}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                setSelectedDatasetId(Number.isFinite(next) && next > 0 ? next : undefined);
+              }}
+            >
+              <option value="">{t("auto_dataset_selection")}</option>
+              {datasets.map((dataset) => (
+                <option key={dataset.id} value={dataset.id}>
+                  {dataset.name} ({dataset.tableName})
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="grid h-9 w-9 place-items-center rounded-[10px] bg-transparent text-[color:var(--color-text-secondary)] transition-colors hover:bg-[color:#222222] hover:text-[color:var(--color-text-primary)] disabled:opacity-60"
+              title="上传数据集"
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!datasets.length) {
+                  toast.error(t("upload_dataset_first"));
+                  return;
+                }
+                setWorkspaceName(`工作区-${new Date().toISOString().slice(0, 10)}`);
+                setWorkspaceDesc("");
+                setPromoteOpen(true);
+              }}
+              className="grid h-9 w-9 place-items-center rounded-[10px] bg-transparent text-[color:var(--color-text-secondary)] transition-colors hover:bg-[color:#222222] hover:text-[color:var(--color-text-primary)]"
+              title="转为工作区"
+            >
+              <FolderUp className="h-4 w-4" />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void sendMessage()}
+            disabled={analyzing || !input.trim()}
+            className="grid h-11 w-11 place-items-center rounded-full bg-[color:var(--color-accent-highlight)] text-[#121212] transition-transform hover:scale-[1.02] disabled:opacity-50"
+            title="发送"
+          >
             {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
-            {t("run")} ↗
-          </Button>
+          </button>
         </div>
+      </div>
+    </div>
+  );
+
+  if (isEmptyState) {
+    return (
+      <div className="flex min-h-[calc(100vh-4.5rem)] flex-col">
+        <div className="mx-auto flex w-full max-w-[960px] flex-1 items-center justify-center px-6 pb-10">
+          {composer}
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv,.xlsx,.xls"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            void triggerUpload(file);
+            if (event.target) event.target.value = "";
+          }}
+        />
+
+        <Dialog open={promoteOpen} onOpenChange={setPromoteOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{t("promote_dialog_title")}</DialogTitle>
+              <DialogDescription>{t("promote_dialog_desc")}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Input value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} placeholder={t("workspace_name")} />
+              <Textarea
+                value={workspaceDesc}
+                onChange={(event) => setWorkspaceDesc(event.target.value)}
+                placeholder={t("description_optional")}
+                rows={6}
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPromoteOpen(false)}>
+                {t("cancel")}
+              </Button>
+              <Button onClick={() => void promoteToWorkspace()} disabled={promoting}>
+                {promoting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderUp className="h-4 w-4" />}
+                {t("promote")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-[calc(100vh-4.5rem)] flex-col">
+      <div className="mx-auto flex w-full max-w-[960px] flex-1 flex-col px-6 pb-6 pt-8">
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto"
+        >
+          <div className="mx-auto max-w-[760px] space-y-8 pb-8">
+            {loadingMessages ? (
+              <>
+                <Skeleton className="ml-auto h-16 w-[44%]" />
+                <Skeleton className="h-16 w-[58%]" />
+                <Skeleton className="h-28 w-[68%]" />
+              </>
+            ) : null}
+
+            {!loadingMessages &&
+              messages.map((message) => {
+                const isUser = message.role.toUpperCase() === "USER";
+                return (
+                  <div key={message.id} className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+                    <div
+                      className={cn(
+                        "max-w-[78%] px-1 text-[15px] leading-8",
+                        isUser
+                          ? "rounded-[18px] bg-[color:rgba(242,201,76,0.12)] px-5 py-4 text-[color:var(--color-text-primary)]"
+                          : "text-[color:var(--color-text-secondary)]"
+                      )}
+                    >
+                      {message.content}
+                    </div>
+                  </div>
+                );
+              })}
+
+            {!loadingMessages && lastResult && !messages.some((message) => message.role.toUpperCase() === "ASSISTANT") ? (
+              <div className="flex justify-start">
+                <div className="max-w-[760px] px-1">
+                  {lastResult.summary ? (
+                    <div className="whitespace-pre-wrap text-[15px] leading-8 text-[color:var(--color-text-primary)]">
+                      {lastResult.summary}
+                    </div>
+                  ) : null}
+
+                  <ResultTable rows={lastResult.data ?? []} />
+
+                  {lastResult.generatedCodeOrSql || lastResult.generatedSql ? (
+                    <div className="mt-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowCode((prev) => !prev)}
+                        className="text-sm text-[color:var(--color-text-secondary)] transition-colors hover:text-[color:var(--color-text-primary)]"
+                      >
+                        {showCode ? "隐藏代码" : "查看代码"}
+                      </button>
+                      {showCode ? (
+                        <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-[14px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] bg-[color:#171717] px-4 py-4 text-sm leading-7 text-[color:var(--color-text-primary)]">
+                          {lastResult.generatedCodeOrSql || lastResult.generatedSql}
+                        </pre>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            {!loadingMessages && !hasConversation && previewArtifacts.length ? (
+              <div className="space-y-3 pt-2">
+                <div className="text-xs uppercase tracking-[0.12em] text-[color:var(--color-text-tertiary)]">Recent</div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {previewArtifacts.map((artifact) => (
+                    <button
+                      key={artifact.id}
+                      type="button"
+                      onClick={() => {
+                        setInput(artifact.userQuery ?? "");
+                        setLastResult({
+                          success: true,
+                          data: parsePreview(artifact.resultPreviewJson),
+                          generatedCodeOrSql: artifact.generatedCodeOrSql,
+                          summary: artifact.summary,
+                          recommendedChart: artifact.chartType,
+                          artifactId: artifact.id,
+                        });
+                      }}
+                      className="rounded-[16px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] bg-[color:#171717] px-4 py-4 text-left transition-colors hover:border-[color:rgba(242,201,76,0.28)] hover:bg-[color:#202020]"
+                    >
+                      <div className="line-clamp-2 text-sm font-medium text-[color:var(--color-text-primary)]">
+                        {artifact.userQuery || t("artifact_query")}
+                      </div>
+                      <div className="mt-2 line-clamp-3 text-sm leading-6 text-[color:var(--color-text-secondary)]">
+                        {artifact.summary || "无摘要"}
+                      </div>
+                      <div className="mt-3 text-xs text-[color:var(--color-text-tertiary)]">
+                        {formatTime(artifact.createdAt, localeTag)}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mx-auto mt-4 w-full max-w-[760px]">{composer}</div>
       </div>
 
       <input
@@ -399,21 +517,22 @@ function ChatPageContent() {
       />
 
       <Dialog open={promoteOpen} onOpenChange={setPromoteOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{t("promote_dialog_title")}</DialogTitle>
             <DialogDescription>{t("promote_dialog_desc")}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} placeholder={t("workspace_name")} />
+            <Input value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} placeholder={t("workspace_name")} />
             <Textarea
               value={workspaceDesc}
-              onChange={(e) => setWorkspaceDesc(e.target.value)}
+              onChange={(event) => setWorkspaceDesc(event.target.value)}
               placeholder={t("description_optional")}
+              rows={6}
             />
           </div>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setPromoteOpen(false)}>
+            <Button variant="outline" onClick={() => setPromoteOpen(false)}>
               {t("cancel")}
             </Button>
             <Button onClick={() => void promoteToWorkspace()} disabled={promoting}>

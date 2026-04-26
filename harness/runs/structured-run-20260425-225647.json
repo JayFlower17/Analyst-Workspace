@@ -1,0 +1,51 @@
+{
+  "generated_at": "2026-04-25T22:56:47",
+  "category": "structured",
+  "total": 3,
+  "passed": 3,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "structured_employees_department_summary",
+      "category": "structured",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "技术部 has the most employees (4), followed by 财务部, 市场部, and 销售部 (3 each), with 人事部 having the fewest (2). The employee distribution across departments is relatively balanced, with the largest department having 2x the headcount of the smallest.",
+        "rows": 5,
+        "artifactId": 12
+      }
+    },
+    {
+      "case_id": "structured_sales_monthly_rollup",
+      "category": "structured",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "All 20 orders in the dataset are from January 2024 (2024-01-01 to 2024-01-10). The total sales for January 2024 amount to ¥116,780. Since only one month of data is available, no month-over-month comparison is possible.",
+        "rows": 1,
+        "artifactId": 13
+      }
+    },
+    {
+      "case_id": "structured_website_traffic_top_source",
+      "category": "structured",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "Based on the available data, the top traffic sources ranked by visits (sales quantity) are: 华东 (East China) leads with 1,330 visits, followed by 华南 (South China) with 885 visits, and 华北 (North China) with 830 visits. The East China region significantly outperforms the other two regions in terms of sales volume.",
+        "rows": 3,
+        "artifactId": 14
+      }
+    }
+  ]
+}

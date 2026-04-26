@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-04-25T22:04:49",
+  "category": "structured",
+  "total": 3,
+  "passed": 0,
+  "failed": 3,
+  "results": [
+    {
+      "case_id": "structured_employees_department_summary",
+      "category": "structured",
+      "passed": false,
+      "reason": "HTTP 502: ",
+      "status_code": 502,
+      "response_excerpt": null
+    },
+    {
+      "case_id": "structured_sales_monthly_rollup",
+      "category": "structured",
+      "passed": false,
+      "reason": "HTTP 502: ",
+      "status_code": 502,
+      "response_excerpt": null
+    },
+    {
+      "case_id": "structured_website_traffic_top_source",
+      "category": "structured",
+      "passed": false,
+      "reason": "HTTP 502: ",
+      "status_code": 502,
+      "response_excerpt": null
+    }
+  ]
+}

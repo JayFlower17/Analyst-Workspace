@@ -1,0 +1,93 @@
+{
+  "generated_at": "2026-04-26T20:10:34",
+  "category": "all",
+  "total": 6,
+  "passed": 5,
+  "failed": 1,
+  "results": [
+    {
+      "case_id": "structured_employees_department_summary",
+      "category": "structured",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "员工按部门人数统计（从高到低排序）：技术部4人最多，财务部、市场部、销售部各3人，人事部2人最少。",
+        "rows": 5,
+        "artifactId": 32
+      }
+    },
+    {
+      "case_id": "structured_sales_monthly_rollup",
+      "category": "structured",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The dataset contains orders only from January 2024. The total sales for January 2024 is ¥130,676, generated from 20 orders with a total quantity of 24 items sold. Since only one month of data is available, a month-over-month comparison is not possible.",
+        "rows": 1,
+        "artifactId": 33
+      }
+    },
+    {
+      "case_id": "structured_website_traffic_top_source",
+      "category": "structured",
+      "passed": false,
+      "reason": "None of the expected columns appeared: ['source', 'channel', 'visits']",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The top traffic sources ranked by total visits are: (1) Referral - 701,830 visits, (2) Social - 701,470 visits, (3) Ads - 700,850 visits, and (4) Organic - 700,230 visits. The traffic volumes are very close across all four channels, with Referral slightly leading. All channels have a similar average bounce rate of 0.29, and comparable unique visitor counts and engagement metrics (clicks, add-to-cart).",
+        "rows": 4,
+        "artifactId": 34
+      }
+    },
+    {
+      "case_id": "workspace_orders_users_join_overview",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "After joining orders and users tables on user_id, I analyzed order counts by user segment (VIP level and gender). Key findings: (1) Each VIP level (L1, L2, L3) has exactly 40 users and 1,710 orders, showing balanced distribution. (2) Male users consistently have higher orders per user (43.5 vs 42.0) and significantly higher average order values across all VIP levels. (3) L3 VIP users generate the highest total revenue (1,456,358.5) and highest average order value (851.67), followed by L1 (1,367,439.5) and L2 (1,364,718.0). (4) The most notable gap is in average order value by gender - male users average ~967-1,041 per order while females average ~623-697, indicating strong gender-based purchasing behavior differences regardless of VIP tier.",
+        "rows": 6,
+        "artifactId": 35
+      }
+    },
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "I analyzed traffic and orders across 6 months (Jul-Dec 2025), covering 60 products with 2,804,400 total page views and 1,658,841 unique visitors across 4 channels (ads, social, referral, organic). Key findings:\n\n**Monthly Trends:** Traffic (PV & UV) peaked in September-October (~514K PV, ~305K UV) then declined into December. Revenue stayed relatively stable around ¥509K-¥548K/month. The UV-to-order conversion rate was highest in July (0.26%) and December (0.25%), and lowest in Sep-Oct (0.22%). Cart-to-order conversion followed a similar pattern, peaking at 2.27% (Jul) and 2.21% (Dec).\n\n**Channel Performance:** Ads generated the highest revenue (¥969,919) and most orders (1,000), followed by social (¥817,104, 955 orders), referral (¥783,216, 1,000 orders), and organic (¥632,520, 955 orders). All channels had similar average bounce rates (~28.5%) and conversion rates (~0.23-0.24%).\n\n**Top Products:** Product #56 led in revenue (¥129,913) and orders (80), followed by #60 (¥122,240) and #48 (¥110,565). Product #36 had the most page views (49,870) but moderate conversion.\n\n**Overall:** The business sees consistent monthly revenue of ~¥520K-¥548K with low overall conversion (~0.23% UV-to-order), suggesting opportunities to improve funnel efficiency from traffic to purchase.",
+        "rows": 6,
+        "artifactId": 36
+      }
+    },
+    {
+      "case_id": "hybrid_workspace_orders_users_note_priority",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "Joined the users and orders tables on user_id, then grouped by vip_level (user segment). There are 3 segments: L1, L2, L3 (where L3 is the highest tier). Each segment has exactly 40 users and 1,710 orders, but L3 stands out with the highest total revenue (¥1,456,358.50) and highest average order value (¥851.67), compared to L2 (¥1,364,718.00, ¥798.08) and L1 (¥1,367,439.50, ¥799.67). Per the workspace note, **L3 (the premium tier) should be highlighted first** as the highest-priority customer cohort, given its superior revenue contribution and higher spend per order.",
+        "rows": 3,
+        "artifactId": 37
+      }
+    }
+  ]
+}

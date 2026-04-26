@@ -132,10 +132,10 @@ export function AppShell({ children }: ShellProps) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto grid min-h-screen max-w-[1440px] grid-cols-1 xl:grid-cols-[220px_minmax(0,1fr)]">
-        <aside className="sidebar-surface flex flex-col xl:min-h-screen">
+      <div className="mx-auto grid min-h-screen max-w-[1600px] grid-cols-1 xl:grid-cols-[232px_minmax(0,1fr)]">
+        <aside className="sidebar-surface flex flex-col border-r [border-width:0.5px] border-[color:var(--color-border-tertiary)] xl:min-h-screen">
           <div className="flex h-12 shrink-0 items-center justify-between px-[14px]">
-            <p className="truncate text-[14px] font-medium text-[color:var(--color-text-primary)]">{t("app_name")}</p>
+            <p className="truncate text-[14px] font-medium tracking-[0.01em] text-[color:var(--color-text-primary)]">{t("app_name")}</p>
             <button
               type="button"
               onClick={() => void handleCreateSession()}
@@ -158,10 +158,10 @@ export function AppShell({ children }: ShellProps) {
                       type="button"
                       onClick={() => router.push(item.href)}
                       className={cn(
-                        "flex h-[38px] w-full items-center gap-2 rounded-[7px] px-[10px] text-left text-[14px] transition-[background-color,color] duration-[120ms]",
+                        "flex h-[40px] w-full items-center gap-2 rounded-[8px] px-[10px] text-left text-[14px] transition-[background-color,color,border-color] duration-[120ms] border [border-width:0.5px]",
                         active
-                          ? "bg-[color:var(--color-sidebar-active-background)] font-medium text-[color:var(--color-text-primary)]"
-                          : "bg-transparent font-normal text-[color:var(--color-text-secondary)] hover:bg-[color:var(--color-sidebar-hover-background)]"
+                          ? "border-[color:rgba(242,201,76,0.3)] bg-[color:rgba(242,201,76,0.08)] font-medium text-[color:var(--color-text-primary)]"
+                          : "border-transparent bg-transparent font-normal text-[color:var(--color-text-secondary)] hover:bg-[color:var(--color-sidebar-hover-background)]"
                       )}
                     >
                       <Icon className="h-4 w-4" />

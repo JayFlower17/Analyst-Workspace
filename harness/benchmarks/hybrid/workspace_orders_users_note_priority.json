@@ -1,0 +1,25 @@
+{
+  "id": "hybrid_workspace_orders_users_note_priority",
+  "category": "hybrid",
+  "description": "Join orders and users, then incorporate a workspace note about which segment to highlight first.",
+  "setup": {
+    "documents": [
+      {
+        "groupId": 1,
+        "name": "Workspace Analysis Note",
+        "path": "temp-samples/workspace-analysis-note.md"
+      }
+    ]
+  },
+  "request": {
+    "groupId": 1,
+    "focusDatasetNames": ["stage2_orders.csv", "stage2_users.csv"],
+    "query": "Join the orders and users tables, summarize order counts by user segment, and mention which segment should be highlighted first according to the workspace note."
+  },
+  "expectations": {
+    "success": true,
+    "min_rows": 1,
+    "required_columns_any": ["segment", "user_segment", "order_count", "count", "vip_level", "total_orders"],
+    "summary_contains_any": ["vip", "premium", "highest-priority", "highlighted first", "highlight first", "priority customer cohort", "L3"]
+  }
+}

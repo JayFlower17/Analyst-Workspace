@@ -16,4 +16,5 @@ public class AnalysisResponse {
     private String summary;
     private String generatedSql;
     private Long executionTime;
+    private Long artifactId;
 }

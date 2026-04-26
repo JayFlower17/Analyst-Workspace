@@ -17,6 +17,7 @@ CLAUDE.md
 # Logs
 *.log
 logs/
+backend/logs/
 
 # OS
 .DS_Store

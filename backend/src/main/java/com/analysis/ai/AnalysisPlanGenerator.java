@@ -3,6 +3,8 @@ package com.analysis.ai;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
 
@@ -10,7 +12,6 @@ import com.analysis.ai.tools.DatabaseTools;
 import com.analysis.ai.tools.PythonTools;
 import com.analysis.model.dto.DatasetInfo;
 import com.analysis.service.MetadataService;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,8 +42,10 @@ public class AnalysisPlanGenerator {
     private final ObjectMapper objectMapper;// JSON序列化工具
     private final DatabaseTools databaseTools;// 数据库工具
     private final PythonTools pythonTools;// python工具
-    private final VectorStore vectorStore;// 向量数据库
+    private final ObjectProvider<VectorStore> vectorStoreProvider;// 向量数据库
     private final MetadataService metadataService;// 元数据服务，用于获取完整表结构
+    @Value("${app.vector-store.enabled:true}")
+    private boolean vectorStoreEnabled;
 
     /** 用于提取 markdown 代码块中的 JSON */
     private static final Pattern JSON_CODE_BLOCK = Pattern.compile(
@@ -105,18 +108,23 @@ public class AnalysisPlanGenerator {
             // 🌟 RAG 检索：拿着用户的问题去 Milvus 里搜相关的列解释或业务知识
             String ragContext = "";
             try {
-                log.info("[RAG] 正在根据用户问题从向量库检索上下文: {}", userQuery);
-                // 按 datasetId 做隔离过滤，查出最相关的 5 条记录。注意：如果有类型转换问题，可尝试去掉引号
-                SearchRequest searchRequest = SearchRequest.query(userQuery)
-                        .withTopK(5)
-                        .withFilterExpression("datasetId == '" + datasetInfo.getId() + "'");
+                VectorStore vectorStore = vectorStoreEnabled ? vectorStoreProvider.getIfAvailable() : null;
+                if (vectorStore != null) {
+                    log.info("[RAG] 正在根据用户问题从向量库检索上下文: {}", userQuery);
+                    // 按 datasetId 做隔离过滤，查出最相关的 5 条记录。注意：如果有类型转换问题，可尝试去掉引号
+                    SearchRequest searchRequest = SearchRequest.query(userQuery)
+                            .withTopK(5)
+                            .withFilterExpression("datasetId == " + datasetInfo.getId());
 
-                List<Document> documents = vectorStore.similaritySearch(searchRequest);
-                if (documents != null && !documents.isEmpty()) {
-                    ragContext = documents.stream()
-                            .map(Document::getContent)
-                            .collect(Collectors.joining("\n"));
-                    log.info("[RAG] 成功检索到 {} 条业务知识", documents.size());
+                    List<Document> documents = vectorStore.similaritySearch(searchRequest);
+                    if (documents != null && !documents.isEmpty()) {
+                        ragContext = documents.stream()
+                                .map(Document::getContent)
+                                .collect(Collectors.joining("\n"));
+                        log.info("[RAG] 成功检索到 {} 条业务知识", documents.size());
+                    }
+                } else {
+                    log.info("[RAG] Vector Store is disabled; running analysis without retrieved context");
                 }
             } catch (Exception e) {
                 log.warn("[RAG] 向量检索失败，降级为无 RAG 模式: {}", e.getMessage());
@@ -180,6 +188,7 @@ public class AnalysisPlanGenerator {
             String workspaceBusinessContext,
             String workspaceSchema,
             String workspaceRelations,
+            String workspaceDocumentContext,
             DatasetInfo anchorDatasetInfo) {
         try {
             databaseTools.resetCallCounters();
@@ -187,14 +196,17 @@ public class AnalysisPlanGenerator {
 
             String ragContext = "";
             try {
-                if (anchorDatasetInfo != null && anchorDatasetInfo.getId() != null) {
+                VectorStore vectorStore = vectorStoreEnabled ? vectorStoreProvider.getIfAvailable() : null;
+                if (vectorStore != null && anchorDatasetInfo != null && anchorDatasetInfo.getId() != null) {
                     SearchRequest searchRequest = SearchRequest.query(userQuery)
                             .withTopK(5)
-                            .withFilterExpression("datasetId == '" + anchorDatasetInfo.getId() + "'");
+                            .withFilterExpression("datasetId == " + anchorDatasetInfo.getId());
                     List<Document> documents = vectorStore.similaritySearch(searchRequest);
                     if (documents != null && !documents.isEmpty()) {
                         ragContext = documents.stream().map(Document::getContent).collect(Collectors.joining("\n"));
                     }
+                } else if (vectorStore == null) {
+                    log.info("[Workspace Agent] Vector Store is disabled; running workspace analysis without retrieved context");
                 }
             } catch (Exception e) {
                 log.warn("[Workspace Agent] RAG retrieval failed: {}", e.getMessage());
@@ -213,18 +225,23 @@ public class AnalysisPlanGenerator {
                     [Workspace Relationships]
                     %s
 
+                    [Workspace Retrieved Document Context]
+                    %s
+
                     User query: %s
                     Primary Table (for fallback exploration): %s
 
                     IMPORTANT:
                     - Prefer JOINs based on declared relationships.
                     - Do not reference tables outside Workspace Schema.
+                    - Treat retrieved document context as supporting business rules or interpretation hints, not as fabricated data rows.
                     - If one table is enough, single-table SQL is allowed.
                     """,
                     ragContext.isEmpty() ? "No specific business context found." : ragContext,
                     workspaceBusinessContext,
                     workspaceSchema,
                     workspaceRelations,
+                    workspaceDocumentContext,
                     userQuery,
                     anchorDatasetInfo != null ? anchorDatasetInfo.getTableName() : "N/A");
 

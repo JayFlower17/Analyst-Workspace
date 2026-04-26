@@ -1,0 +1,15 @@
+{
+  "id": "workspace_orders_users_join_overview",
+  "category": "workspace",
+  "description": "Join orders and users for a simple grouped overview.",
+  "request": {
+    "groupId": 1,
+    "focusDatasetNames": ["stage2_orders.csv", "stage2_users.csv"],
+    "query": "Join the orders and users tables and summarize order counts by user segment."
+  },
+  "expectations": {
+    "success": true,
+    "min_rows": 1,
+    "required_columns_any": ["segment", "user_segment", "order_count", "count", "vip_level", "total_orders", "orders_per_user"]
+  }
+}

@@ -18,6 +18,7 @@ import com.analysis.model.dto.ExecutorResponse;
 import com.analysis.model.entity.AnalysisArtifact;
 import com.analysis.model.entity.Dataset;
 import com.analysis.service.WorkspaceSchemaService.WorkspaceSchemaContext;
+import com.analysis.service.WorkspaceContextAssembler.WorkspaceAnalysisContext;
 import com.analysis.repository.DuckDBRepository;
 import com.analysis.security.SqlWhitelist;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,6 +38,7 @@ public class AnalysisService {
     private final DuckDBRepository duckDBRepository;
     private final PythonExecutorClient pythonExecutorClient;
     private final WorkspaceSchemaService workspaceSchemaService;
+    private final WorkspaceContextAssembler workspaceContextAssembler;
     private final ObjectMapper objectMapper;
 
     @Value("${duckdb.path:./data/analysis.duckdb}")
@@ -61,11 +63,13 @@ public class AnalysisService {
                 DatasetInfo anchorInfo = datasetService.getDatasetInfo(executionDataset.getId());
                 log.info("[Analysis] Workspace mode | Query: {} | Group: {} | Tables: {}",
                         request.getQuery(), request.getGroupId(), context.datasets().size());
+                WorkspaceAnalysisContext analysisContext = workspaceContextAssembler.assemble(request, context);
                 agentResult = planGenerator.runWorkspaceAnalysis(
                         request.getQuery(),
-                        context.businessContextPrompt(),
-                        context.schemaPrompt(),
-                        context.relationPrompt(),
+                        analysisContext.businessContextPrompt(),
+                        analysisContext.schemaPrompt(),
+                        analysisContext.relationPrompt(),
+                        analysisContext.documentContextPrompt(),
                         anchorInfo);
             } else {
                 if (request.getDatasetId() == null) {
@@ -144,7 +148,14 @@ public class AnalysisService {
             response.setSummary(summary);
             response.setExecutionTime(System.currentTimeMillis() - startTime);
 
-            saveAnalysisArtifactSafely(request, executionDataset, codeOrSql, summary, response.getRecommendedChart(), displayData);
+            Long artifactId = saveAnalysisArtifactSafely(
+                    request,
+                    executionDataset,
+                    codeOrSql,
+                    summary,
+                    response.getRecommendedChart(),
+                    displayData);
+            response.setArtifactId(artifactId);
 
             return response;
 
@@ -175,7 +186,7 @@ public class AnalysisService {
         return upper.startsWith("SELECT") || upper.startsWith("WITH");
     }
 
-    private void saveAnalysisArtifactSafely(
+    private Long saveAnalysisArtifactSafely(
             AnalysisRequest request,
             Dataset executionDataset,
             String codeOrSql,
@@ -193,9 +204,10 @@ public class AnalysisService {
             artifact.setChartType(chartType != null ? chartType.name() : com.analysis.model.enums.ChartType.TABLE.name());
             int maxRows = Math.min(displayData.size(), 20);
             artifact.setResultPreviewJson(objectMapper.writeValueAsString(displayData.subList(0, maxRows)));
-            duckDBRepository.saveAnalysisArtifact(artifact);
+            return duckDBRepository.saveAnalysisArtifact(artifact);
         } catch (Exception e) {
             log.warn("[Analysis] save artifact failed: {}", e.getMessage());
+            return null;
         }
     }
 }

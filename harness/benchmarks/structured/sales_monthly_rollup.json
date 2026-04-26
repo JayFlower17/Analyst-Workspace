@@ -1,0 +1,14 @@
+{
+  "id": "structured_sales_monthly_rollup",
+  "category": "structured",
+  "description": "Aggregate sales by month.",
+  "request": {
+    "datasetId": 2,
+    "query": "Summarize total sales by month."
+  },
+  "expectations": {
+    "success": true,
+    "min_rows": 1,
+    "required_columns_any": ["month", "sales", "total_sales"]
+  }
+}

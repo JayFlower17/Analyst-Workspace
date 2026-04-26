@@ -1,0 +1,14 @@
+{
+  "id": "structured_website_traffic_top_source",
+  "category": "structured",
+  "description": "Find the strongest traffic source.",
+  "request": {
+    "datasetId": 3,
+    "query": "Show the top traffic sources ranked by visits."
+  },
+  "expectations": {
+    "success": true,
+    "min_rows": 1,
+    "required_columns_any": ["source", "channel", "traffic_source", "visits", "total_visits"]
+  }
+}
