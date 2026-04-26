@@ -76,3 +76,6 @@ backend/src/main/resources/application-secrets.yml
 # Nested / reference repositories
 third_party/
 volumes/
+
+# Local thesis drafts
+thesis/
