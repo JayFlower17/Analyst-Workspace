@@ -1,0 +1,43 @@
+{
+  "generated_at": "2026-05-01T19:06:24",
+  "category": "hybrid",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "request_timeout_seconds": 120,
+  "results": [
+    {
+      "case_id": "hybrid_workspace_orders_products_merchandising_priority",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The paid order revenue was summarized by product category across 6 categories. The 手机 (Mobile Phone) category generated the highest paid revenue at ¥698,031.25, followed by 美妆 (Beauty) at ¥633,245.25 and 家电 (Home Appliances) at ¥612,073.50. Per the Merchandising Priority Note, the 手机 category is the strategic launch focus for this workspace, and it also leads in measured revenue, reinforcing its priority position.",
+        "rows": 6,
+        "artifactId": 76
+      },
+      "duration_seconds": 10.313,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\hybrid\\workspace_orders_products_merchandising_priority.json",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_products.csv"
+        ],
+        "query": "Join the orders and products tables, summarize paid revenue by product category, and mention which category is the strategic launch focus according to the merchandising note."
+      },
+      "setup_documents_requested": 1,
+      "setup_resources_created": [
+        {
+          "type": "document",
+          "id": 26
+        }
+      ],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    }
+  ]
+}

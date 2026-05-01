@@ -1,14 +1,15 @@
 {
   "id": "workspace_traffic_orders_join_signal",
   "category": "workspace",
-  "description": "Look for a simple relationship between traffic and orders in one workspace.",
+  "description": "Join traffic and orders into a stable channel-level SQL summary.",
   "request": {
     "groupId": 1,
     "focusDatasetNames": ["stage2_orders.csv", "stage2_traffic.csv"],
-    "query": "Compare traffic and orders at a grouped level and return the most useful combined summary."
+    "query": "Using SQL only, join the traffic and orders tables by product_id and date, then summarize by traffic channel. Return channel, total page views, total unique visitors, paid order count, paid revenue, and a concise conversion-rate summary."
   },
   "expectations": {
     "success": true,
-    "min_rows": 1
+    "min_rows": 1,
+    "required_columns_any": ["channel", "total_pv", "total_uv", "paid_order_count", "paid_revenue", "conversion_rate"]
   }
 }

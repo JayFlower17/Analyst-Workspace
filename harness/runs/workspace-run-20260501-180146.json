@@ -1,0 +1,25 @@
+{
+  "generated_at": "2026-05-01T18:01:46",
+  "category": "workspace",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "request_timeout_seconds": 120,
+  "results": [
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "Traffic channel performance summary across all 4 channels (organic, referral, social, ads):\n\n- **Page Views**: All channels have ~700K PVs, with referral leading at 701,830 and organic at 700,230.\n- **Unique Visitors**: referral (421,141) and ads (420,576) lead slightly over social (413,926) and organic (413,192).\n- **Paid Orders**: referral and ads each generated 1,000 paid orders; social and organic each had 955.\n- **Paid Revenue**: ads generated the highest revenue (~$969,919), followed by social (~$817,104), referral (~$783,216), and organic (~$632,520).\n- **Conversion Rate**: All channels show a consistent ~0.02% conversion rate (paid unique users / total UV), indicating similar funnel efficiency across channels.",
+        "rows": 4,
+        "artifactId": 74
+      },
+      "duration_seconds": 15.329
+    }
+  ]
+}

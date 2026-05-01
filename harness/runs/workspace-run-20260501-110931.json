@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-05-01T11:09:31",
+  "category": "workspace",
+  "total": 2,
+  "passed": 2,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "workspace_orders_users_join_overview",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "Joined the orders and users tables on user_id and summarized order counts by user segment (vip_level, gender, region). The dataset contains 120 users evenly distributed across all segments: 40 users per VIP level (L1, L2, L3), 60 per gender (F/M), and 24 per region (华东/华中/华北/华南/西南). Each VIP level has exactly 1,710 orders. Male users placed 2,610 orders (avg 43.5/user) vs 2,520 for females (avg 42/user). Revenue differs notably: L3 generates the highest total revenue (¥1,456,359), followed by L1 (¥1,367,439) and L2 (¥1,364,718). Male users contribute significantly more revenue (¥2,528,818) than females (¥1,659,699). All 5 regions show identical order counts (1,026) and revenue (¥837,703), suggesting a synthetically balanced dataset.",
+        "rows": 30,
+        "artifactId": 64
+      }
+    },
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The analysis joined traffic and orders tables by product_id and date, then summarized by traffic channel. **Ads** channel leads in paid revenue ($969,919) with 1,000 paid orders from 420,576 unique visitors (0.2378% conversion). **Social** generated $817,104 (955 orders, 0.2307% conversion), **Referral** generated $783,216 (1,000 orders, 0.2375% conversion), and **Organic** generated $632,520 (955 orders, 0.2311% conversion). Page views are fairly balanced across channels (~700k each), but Ads and Referral show slightly higher conversion rates. Organic traffic, while valuable for unpaid acquisition, has the lowest revenue and conversion rate among the four channels.",
+        "rows": 4,
+        "artifactId": 65
+      }
+    }
+  ]
+}

@@ -644,6 +644,55 @@ cd F:\data-analysis-platform
 python harness\run_benchmarks.py --category hybrid
 ```
 
+当前已覆盖两类联合分析样例：
+
+- `orders + users + workspace note`
+  - 验证用户分层分析会采纳 workspace note 中的优先级规则
+- `orders + products + merchandising note`
+  - 验证商品类目营收分析会采纳 merchandising note 中的战略类目规则
+
+最近一次验证：
+
+- 时间：`2026-05-01 11:05`
+- 结果：`2 / 2` 通过
+- 报告：[hybrid-run-20260501-110504.json](F:\data-analysis-platform\harness\runs\hybrid-run-20260501-110504.json)
+
+### 5.16 Harness 诊断增强
+
+当前 `harness` 已补充几项用于自动化回归的诊断能力：
+
+- `--case-id`
+  - 可只运行一个或多个指定 case
+- `--request-timeout`
+  - 可按需覆盖单次 HTTP 请求超时
+- `--list-cases`
+  - 可在不连接后端的情况下列出当前可运行 case
+- 报告诊断字段：
+  - `request_timeout_seconds`
+  - `duration_seconds`
+  - `case_path`
+  - `request_excerpt`
+  - `setup_documents_requested`
+  - `setup_resources_created`
+  - `cleanup_succeeded`
+  - `cleanup_errors`
+
+最近几次验证：
+
+- `2026-05-01 11:09`
+  - workspace benchmark：`2 / 2` 通过
+  - 报告：[workspace-run-20260501-110931.json](F:\data-analysis-platform\harness\runs\workspace-run-20260501-110931.json)
+- `2026-05-01 18:01`
+  - 单 case：`workspace_traffic_orders_join_signal`
+  - 结果：`1 / 1` 通过
+  - 报告：[workspace-run-20260501-180146.json](F:\data-analysis-platform\harness\runs\workspace-run-20260501-180146.json)
+- `2026-05-01 19:06`
+  - 单 case：`hybrid_workspace_orders_products_merchandising_priority`
+  - 结果：`1 / 1` 通过
+  - 报告：[hybrid-run-20260501-190624.json](F:\data-analysis-platform\harness\runs\hybrid-run-20260501-190624.json)
+
+本轮生成的 `harness/runs/` 报告文件保留，用作 Phase 2 回归记录。
+
 ---
 
 ## 6. 这还不是什么
@@ -652,8 +701,7 @@ python harness\run_benchmarks.py --category hybrid
 
 - 完整的多来源统一 `ContextAssembler`
 - 成熟的文档 rerank / reretrieve / compression 体系
-- `frontend-next` 上可直接操作的文档管理界面
-- 覆盖更多业务场景的联合分析评测集
+- 更大规模、更多业务域的联合分析评测集
 
 这些仍然是后续任务，不是当前阶段已经完全做完的能力。
 
@@ -663,12 +711,11 @@ python harness\run_benchmarks.py --category hybrid
 
 建议按这个顺序继续推进：
 
-1. `frontend-next` 文档管理界面
-2. 更完整的联合分析 benchmark 集
-3. schema / relation / document 的统一上下文预算
-4. 更成熟的检索 rerank / reretrieve / compression
-5. 结构化 + 文档联合上下文组装继续增强
+1. 扩展联合分析 benchmark 到更多问题类型
+2. schema / relation / document 的统一上下文预算
+3. 更成熟的检索 rerank / reretrieve / compression
+4. 结构化 + 文档联合上下文组装继续增强
 
 也就是说，下一刀最合适的是：
 
-**优先把 Phase 2 的前端文档管理和联合分析评测继续补齐。**
+**优先把 Phase 2 的联合分析评测继续补齐，并逐步收敛统一上下文组装。**

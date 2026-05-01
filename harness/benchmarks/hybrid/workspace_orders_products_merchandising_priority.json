@@ -1,0 +1,25 @@
+{
+  "id": "hybrid_workspace_orders_products_merchandising_priority",
+  "category": "hybrid",
+  "description": "Join orders and products, then incorporate a merchandising note about the strategic category focus.",
+  "setup": {
+    "documents": [
+      {
+        "groupId": 1,
+        "name": "Merchandising Priority Note",
+        "path": "harness/resources/merchandising-priority-note.md"
+      }
+    ]
+  },
+  "request": {
+    "groupId": 1,
+    "focusDatasetNames": ["stage2_orders.csv", "stage2_products.csv"],
+    "query": "Join the orders and products tables, summarize paid revenue by product category, and mention which category is the strategic launch focus according to the merchandising note."
+  },
+  "expectations": {
+    "success": true,
+    "min_rows": 1,
+    "required_columns_any": ["category", "product_category", "revenue", "total_revenue", "payment_amount", "paid_revenue"],
+    "summary_contains_any": ["手机", "strategic", "launch focus", "strategic launch focus", "focus category", "merchandising"]
+  }
+}

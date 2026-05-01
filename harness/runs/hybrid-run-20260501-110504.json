@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-05-01T11:05:04",
+  "category": "hybrid",
+  "total": 2,
+  "passed": 2,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "hybrid_workspace_orders_products_merchandising_priority",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The total paid revenue by product category shows that the 手机 (Mobile Phone) category leads with ¥698,031.25, followed by 美妆 (Beauty) at ¥633,245.25 and 家电 (Home Appliances) at ¥612,073.50. According to the Merchandising Priority Note, the 手机 category is designated as the **strategic launch focus** for this workspace. This is consistent with the data, as 手机 also achieved the highest measured revenue among all categories.",
+        "rows": 6,
+        "artifactId": 55
+      }
+    },
+    {
+      "case_id": "hybrid_workspace_orders_users_note_priority",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "Joined the users and orders tables to summarize order counts by VIP-level user segment. The data contains 3 VIP segments (L1, L2, L3), each with 40 users and exactly 1,710 orders, resulting in an average of 42.75 orders per user across all segments — indicating a perfectly balanced distribution. According to the workspace analysis note, VIP or premium-like segments should be treated as the highest-priority customer cohort. Therefore, the **L3 segment** (the highest VIP tier) should be highlighted first, followed by L2 and then L1, as the ascending level number reflects higher membership tier priority.",
+        "rows": 3,
+        "artifactId": 56
+      }
+    }
+  ]
+}

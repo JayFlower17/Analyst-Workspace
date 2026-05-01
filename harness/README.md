@@ -25,7 +25,7 @@ harness/
 Each benchmark case is a JSON file with:
 
 - `id`: stable case id
-- `category`: `structured` or `workspace`
+- `category`: `structured`, `workspace`, or `hybrid`
 - `description`: short human-readable intent
 - `setup` (optional): resources to create before the request, such as workspace documents
 - `request`: payload sent to `/api/analysis/query`
@@ -59,12 +59,14 @@ Hybrid cases can include setup documents:
       {
         "groupId": 1,
         "name": "Workspace Analysis Note",
-        "path": "temp-samples/workspace-analysis-note.md"
+        "path": "harness/resources/workspace-analysis-note.md"
       }
     ]
   }
 }
 ```
+
+Put benchmark-owned files under `harness/resources/` so cases remain portable across checkouts.
 
 ## Run
 
@@ -77,7 +79,30 @@ python harness/run_benchmarks.py --base-url http://127.0.0.1:8080/api --category
 python harness/run_benchmarks.py --base-url http://127.0.0.1:8080/api
 ```
 
+Run one specific case when debugging a slow or flaky benchmark:
+
+```bash
+python harness/run_benchmarks.py --category workspace --case-id workspace_traffic_orders_join_signal
+```
+
+Control per-request timeout when the backend or model provider is slow:
+
+```bash
+python harness/run_benchmarks.py --category hybrid --request-timeout 120
+```
+
+List cases without contacting the backend:
+
+```bash
+python harness/run_benchmarks.py --category all --list-cases
+```
+
 Outputs are written to `harness/runs/`.
+
+The current hybrid set includes:
+
+- `hybrid_workspace_orders_users_note_priority`
+- `hybrid_workspace_orders_products_merchandising_priority`
 
 ## Notes
 
@@ -86,3 +111,5 @@ Outputs are written to `harness/runs/`.
 - Current checks focus on API success, result rows, and column hints.
 - Workspace cases require valid local `groupId` and dataset setup in your environment.
 - Hybrid cases create and clean up temporary workspace documents around each run.
+- Case definitions are validated before authentication, including setup document paths.
+- Reports include `request_timeout_seconds` plus per-case `duration_seconds`, `case_path`, `request_excerpt`, setup document counts, created setup resources, and cleanup status.
