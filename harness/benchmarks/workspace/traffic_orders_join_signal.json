@@ -2,6 +2,7 @@
   "id": "workspace_traffic_orders_join_signal",
   "category": "workspace",
   "description": "Join traffic and orders into a stable channel-level SQL summary.",
+  "tags": ["workspace", "multi-table", "join", "sql-only", "execution-log", "phase4-regression"],
   "request": {
     "groupId": 1,
     "focusDatasetNames": ["stage2_orders.csv", "stage2_traffic.csv"],
@@ -10,6 +11,43 @@
   "expectations": {
     "success": true,
     "min_rows": 1,
-    "required_columns_any": ["channel", "total_pv", "total_uv", "paid_order_count", "paid_revenue", "conversion_rate"]
+    "required_columns_any": ["channel", "total_pv", "total_uv", "paid_order_count", "paid_revenue", "conversion_rate"],
+    "context_summary_exact": {
+      "structuredSource": "WORKSPACE_SCHEMA",
+      "documentSource": "DOCUMENT_RETRIEVAL",
+      "semanticSource": "WORKSPACE_METADATA",
+      "documentStrategy": "SKIP"
+    },
+    "context_summary_min": {
+      "datasetCount": 2,
+      "structuredPromptChars": 1,
+      "semanticPromptChars": 1
+    },
+    "route_decision_exact": {
+      "route": "STRUCTURED_QUERY",
+      "requiresWorkspaceContext": true,
+      "requiresDocumentContext": false,
+      "allowsSqlGeneration": true
+    },
+    "analysis_plan_step_types_exact": [
+      "ROUTE_DECISION",
+      "BUILD_CONTEXT",
+      "GENERATE_SQL",
+      "EXECUTE_SQL",
+      "SUMMARIZE_RESULT"
+    ],
+    "execution_log_tool_types_exact": ["SQL_EXECUTION"],
+    "analysis_report_evidence_exact": {
+      "datasetCount": 2,
+      "documentChunkCount": 0,
+      "documentStrategy": "SKIP"
+    },
+    "validation_report_exact": {
+      "passed": true,
+      "findingCount": 0
+    },
+    "risk_notices_exact": {
+      "count": 0
+    }
   }
 }

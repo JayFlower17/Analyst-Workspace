@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-05-02T17:21:48",
+  "category": "hybrid",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "request_timeout_seconds": 180,
+  "results": [
+    {
+      "case_id": "hybrid_workspace_orders_products_revenue_policy",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "根据收入确认政策，仅统计订单状态为'PAID'（已支付）的收入，排除所有'REFUNDED'（已退款）订单。分析显示，各产品类别的认可收入排名如下：手机类以698,031.25元位居第一，美妆类以633,245.25元排名第二，家电类以612,073.50元排名第三，随后是食品类（443,939.75元）、服饰类（415,348.00元）和电脑类（400,120.75元）。数据中共有1,220笔退款订单（总额985,757.50元）已按政策要求从认可收入中排除。",
+        "rows": 6,
+        "artifactId": 80,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "HEAVY",
+          "documentTopK": 4,
+          "documentCharBudget": 2600,
+          "documentChunkCount": 2,
+          "structuredPromptChars": 651,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 308,
+          "documentPromptChars": 1161
+        }
+      },
+      "duration_seconds": 10.469,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\hybrid\\workspace_orders_products_revenue_policy.json",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_products.csv"
+        ],
+        "query": "Join the orders and products tables, summarize recognized commerce revenue by product category according to the revenue recognition policy, and explain how refunded orders are treated."
+      },
+      "setup_documents_requested": 1,
+      "setup_resources_created": [
+        {
+          "type": "document",
+          "id": 28
+        }
+      ],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    }
+  ]
+}

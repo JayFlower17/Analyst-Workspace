@@ -1,0 +1,94 @@
+{
+  "generated_at": "2026-05-02T23:10:09",
+  "category": "workspace",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "request_timeout_seconds": 120,
+  "results": [
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The analysis joined traffic and orders tables by product_id and event/order date, then summarized by traffic channel. **Ads** leads with the highest paid revenue ($969,918.75) and 1,000 paid orders, closely followed by **Referral** ($783,216.25, also 1,000 paid orders) and **Social** ($817,103.75, 955 paid orders). **Organic** trails with $632,519.75 and 955 paid orders. Total page views are nearly equal across all channels (~700K–701K), and unique visitors range from ~413K to ~421K. Conversion rates (paid orders / unique visitors) are very close across channels: **Ads** (0.2378%), **Referral** (0.2375%), **Organic** (0.2311%), and **Social** (0.2307%). Overall, Ads and Referral channels show slightly higher conversion efficiency and order volume, while Social and Organic perform similarly but with marginally lower conversion rates.",
+        "rows": 4,
+        "artifactId": 123,
+        "generatedSqlPresent": true,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "SKIP",
+          "documentTopK": 0,
+          "documentCharBudget": 0,
+          "documentChunkCount": 0,
+          "structuredPromptChars": 679,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 307,
+          "documentPromptChars": 105
+        },
+        "routeDecision": {
+          "route": "STRUCTURED_QUERY",
+          "reason": "The query can be handled as a structured workspace analysis.",
+          "requiresWorkspaceContext": true,
+          "requiresDocumentContext": false,
+          "allowsSqlGeneration": true
+        },
+        "analysisPlan": {
+          "route": "STRUCTURED_QUERY",
+          "objective": "Answer the workspace question using structured table context and SQL.",
+          "stepTypes": [
+            "ROUTE_DECISION",
+            "BUILD_CONTEXT",
+            "GENERATE_SQL",
+            "EXECUTE_SQL",
+            "SUMMARIZE_RESULT"
+          ],
+          "stepCount": 5
+        },
+        "executionLogs": {
+          "toolTypes": [
+            "SQL_EXECUTION"
+          ],
+          "stepTypes": [
+            "EXECUTE_SQL"
+          ],
+          "successes": [
+            true
+          ],
+          "durationsMs": [
+            12
+          ],
+          "count": 1
+        },
+        "validationReport": {
+          "passed": true,
+          "findings": []
+        }
+      },
+      "duration_seconds": 18.313,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\workspace\\traffic_orders_join_signal.json",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_traffic.csv"
+        ],
+        "query": "Using SQL only, join the traffic and orders tables by product_id and date, then summarize by traffic channel. Return channel, total page views, total unique visitors, paid order count, paid revenue, and a concise conversion-rate summary."
+      },
+      "setup_documents_requested": 0,
+      "setup_resources_created": [],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    }
+  ]
+}

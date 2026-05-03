@@ -1,0 +1,293 @@
+{
+  "generated_at": "2026-05-02T22:19:56",
+  "category": "hybrid",
+  "total": 4,
+  "passed": 4,
+  "failed": 0,
+  "request_timeout_seconds": 120,
+  "results": [
+    {
+      "case_id": "hybrid_workspace_orders_products_merchandising_priority",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "Paid revenue by product category shows that 手机 (Mobile Phones) leads with ¥698,031.25, followed by 美妆 (Cosmetics) at ¥633,245.25, 家电 (Home Appliances) at ¥612,073.50, 食品 (Food) at ¥443,939.75, 服饰 (Apparel) at ¥415,348.00, and 电脑 (Computers) at ¥400,120.75. Per the Merchandising Priority Note, the 手机 category is designated as the strategic launch focus for this workspace and should be highlighted as the top business priority.",
+        "rows": 6,
+        "artifactId": 104,
+        "generatedSqlPresent": true,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "HEAVY",
+          "documentTopK": 4,
+          "documentCharBudget": 2600,
+          "documentChunkCount": 2,
+          "structuredPromptChars": 651,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 308,
+          "documentPromptChars": 1040
+        },
+        "routeDecision": {
+          "route": "HYBRID_ANALYSIS",
+          "reason": "The query references document, policy, rule, priority, or explanatory context.",
+          "requiresWorkspaceContext": true,
+          "requiresDocumentContext": true,
+          "allowsSqlGeneration": true
+        },
+        "analysisPlan": {
+          "route": "HYBRID_ANALYSIS",
+          "objective": "Answer the workspace question by combining table analysis with retrieved document context.",
+          "stepTypes": [
+            "ROUTE_DECISION",
+            "BUILD_CONTEXT",
+            "RETRIEVE_DOCUMENTS",
+            "GENERATE_SQL",
+            "EXECUTE_SQL",
+            "SUMMARIZE_RESULT"
+          ],
+          "stepCount": 6
+        }
+      },
+      "duration_seconds": 9.704,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\hybrid\\workspace_orders_products_merchandising_priority.json",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_products.csv"
+        ],
+        "query": "Join the orders and products tables, summarize paid revenue by product category, and mention which category is the strategic launch focus according to the merchandising note."
+      },
+      "setup_documents_requested": 1,
+      "setup_resources_created": [
+        {
+          "type": "document",
+          "id": 47
+        }
+      ],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    },
+    {
+      "case_id": "hybrid_workspace_orders_products_revenue_policy",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "根据收入确认政策，仅统计 order_status 为 'PAID' 的订单作为已确认收入，已排除所有 'REFUNDED' 订单。分析发现共有 1,220 笔退款订单，涉及退款金额 ¥985,757.50，这些已按政策排除。按产品类别汇总的已确认收入排名如下：手机（¥698,031.25）位居第一，其次是美妆（¥633,245.25）、家电（¥612,073.50）、食品（¥443,939.75）、服饰（¥415,348.00）和电脑（¥400,120.75）。建议使用柱状图展示各类别的收入对比。",
+        "rows": 6,
+        "artifactId": 105,
+        "generatedSqlPresent": true,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "HEAVY",
+          "documentTopK": 4,
+          "documentCharBudget": 2600,
+          "documentChunkCount": 2,
+          "structuredPromptChars": 651,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 308,
+          "documentPromptChars": 1161
+        },
+        "routeDecision": {
+          "route": "HYBRID_ANALYSIS",
+          "reason": "The query references document, policy, rule, priority, or explanatory context.",
+          "requiresWorkspaceContext": true,
+          "requiresDocumentContext": true,
+          "allowsSqlGeneration": true
+        },
+        "analysisPlan": {
+          "route": "HYBRID_ANALYSIS",
+          "objective": "Answer the workspace question by combining table analysis with retrieved document context.",
+          "stepTypes": [
+            "ROUTE_DECISION",
+            "BUILD_CONTEXT",
+            "RETRIEVE_DOCUMENTS",
+            "GENERATE_SQL",
+            "EXECUTE_SQL",
+            "SUMMARIZE_RESULT"
+          ],
+          "stepCount": 6
+        }
+      },
+      "duration_seconds": 10.296,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\hybrid\\workspace_orders_products_revenue_policy.json",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_products.csv"
+        ],
+        "query": "Join the orders and products tables, summarize recognized commerce revenue by product category according to the revenue recognition policy, and explain how refunded orders are treated."
+      },
+      "setup_documents_requested": 1,
+      "setup_resources_created": [
+        {
+          "type": "document",
+          "id": 48
+        }
+      ],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    },
+    {
+      "case_id": "hybrid_workspace_orders_users_note_priority",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "After joining the orders and users tables, the order metrics were summarized by VIP level (user segment). All three segments (L1, L2, L3) have the same number of users (40 each) and the same order count (1,710 each). However, total revenue differs: L3 leads with ¥1,456,358.50, followed by L1 (¥1,367,439.50) and L2 (¥1,364,718.00). L3 also has the highest average order value at ¥851.67. According to the workspace analysis note, VIP/premium-like segments should be treated as the highest-priority customer cohort. Since L3 is the highest VIP tier (L3 > L2 > L1), the **L3 segment should be highlighted first** as it generates the most revenue and has the highest average order value.",
+        "rows": 3,
+        "artifactId": 106,
+        "generatedSqlPresent": true,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "HEAVY",
+          "documentTopK": 4,
+          "documentCharBudget": 2600,
+          "documentChunkCount": 2,
+          "structuredPromptChars": 674,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 305,
+          "documentPromptChars": 1055
+        },
+        "routeDecision": {
+          "route": "HYBRID_ANALYSIS",
+          "reason": "The query references document, policy, rule, priority, or explanatory context.",
+          "requiresWorkspaceContext": true,
+          "requiresDocumentContext": true,
+          "allowsSqlGeneration": true
+        },
+        "analysisPlan": {
+          "route": "HYBRID_ANALYSIS",
+          "objective": "Answer the workspace question by combining table analysis with retrieved document context.",
+          "stepTypes": [
+            "ROUTE_DECISION",
+            "BUILD_CONTEXT",
+            "RETRIEVE_DOCUMENTS",
+            "GENERATE_SQL",
+            "EXECUTE_SQL",
+            "SUMMARIZE_RESULT"
+          ],
+          "stepCount": 6
+        }
+      },
+      "duration_seconds": 13.938,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\hybrid\\workspace_orders_users_note_priority.json",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_users.csv"
+        ],
+        "query": "Join the orders and users tables, summarize order counts by user segment, and mention which segment should be highlighted first according to the workspace note."
+      },
+      "setup_documents_requested": 1,
+      "setup_resources_created": [
+        {
+          "type": "document",
+          "id": 49
+        }
+      ],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    },
+    {
+      "case_id": "hybrid_workspace_revenue_policy_document_only",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "Based on the retrieved workspace document context:\n- Revenue Recognition Policy: # Revenue Recognition Policy\n\nWhen reporting recognized commerce revenue for this workspace:\n\n- Recognized revenue must include only orders where `order_status` is `PAID`.\n- Orders where `order_status` is `REFUNDED` must be excluded from recognized revenue.\n- If the analysis compares product categories, rank categories by recognized paid revenue rather than gross order amount.\n- The final summary should explicitly mention that refunded orders were excluded by policy.\nNo SQL was generated because the request was classified as document-only.",
+        "rows": 0,
+        "artifactId": 107,
+        "generatedSqlPresent": false,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "HEAVY",
+          "documentTopK": 4,
+          "documentCharBudget": 2600,
+          "documentChunkCount": 2,
+          "structuredPromptChars": 651,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 308,
+          "documentPromptChars": 1161
+        },
+        "routeDecision": {
+          "route": "DOCUMENT_EXPLANATION",
+          "reason": "The query explicitly asks for document-only or no-SQL answering.",
+          "requiresWorkspaceContext": true,
+          "requiresDocumentContext": true,
+          "allowsSqlGeneration": false
+        },
+        "analysisPlan": {
+          "route": "DOCUMENT_EXPLANATION",
+          "objective": "Answer directly from retrieved document context without generating SQL.",
+          "stepTypes": [
+            "ROUTE_DECISION",
+            "BUILD_CONTEXT",
+            "RETRIEVE_DOCUMENTS",
+            "ANSWER_FROM_DOCUMENTS",
+            "SUMMARIZE_RESULT"
+          ],
+          "stepCount": 5
+        }
+      },
+      "duration_seconds": 0.109,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\hybrid\\workspace_revenue_policy_document_only.json",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_products.csv"
+        ],
+        "query": "According to the revenue recognition policy, how are REFUNDED orders treated? Answer from the document only; no SQL is needed."
+      },
+      "setup_documents_requested": 1,
+      "setup_resources_created": [
+        {
+          "type": "document",
+          "id": 50
+        }
+      ],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    }
+  ]
+}

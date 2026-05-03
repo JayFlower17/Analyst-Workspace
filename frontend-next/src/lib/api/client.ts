@@ -3,6 +3,7 @@
 import type {
   AnalysisResult,
   Artifact,
+  ArtifactDetail,
   AuthResponse,
   ApiEnvelope,
   ChatMessage,
@@ -257,11 +258,34 @@ export const documentApi = {
 };
 
 export const artifactApi = {
-  recent({ sessionId, groupId, limit = 5 }: { sessionId?: number; groupId?: number; limit?: number }) {
+  recent({
+    sessionId,
+    groupId,
+    limit = 5,
+    status = "ACTIVE",
+  }: {
+    sessionId?: number;
+    groupId?: number;
+    limit?: number;
+    status?: "ACTIVE" | "ARCHIVED" | "DELETED";
+  }) {
     const params = new URLSearchParams();
     if (sessionId) params.set("sessionId", String(sessionId));
     if (groupId) params.set("groupId", String(groupId));
     params.set("limit", String(limit));
+    params.set("status", status);
     return request<ApiEnvelope<Artifact[]>>(`/artifacts/recent?${params.toString()}`);
+  },
+  detail(id: number) {
+    return request<ApiEnvelope<ArtifactDetail>>(`/artifacts/${id}`);
+  },
+  archive(id: number) {
+    return request<ApiEnvelope<ArtifactDetail>>(`/artifacts/${id}/archive`, { method: "PATCH" });
+  },
+  restore(id: number) {
+    return request<ApiEnvelope<ArtifactDetail>>(`/artifacts/${id}/restore`, { method: "PATCH" });
+  },
+  delete(id: number) {
+    return request<ApiEnvelope<ArtifactDetail>>(`/artifacts/${id}`, { method: "DELETE" });
   },
 };

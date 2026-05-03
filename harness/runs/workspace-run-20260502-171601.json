@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-05-02T17:16:01",
+  "category": "workspace",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "request_timeout_seconds": 120,
+  "results": [
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The analysis joined the traffic and orders tables on product_id and date, then summarized by traffic channel. All four channels (referral, social, ads, organic) show very similar traffic volumes (~700K page views each). **Ads** generates the highest paid revenue ($969,919) and the highest conversion rate (0.2378%), closely followed by **referral** ($783,216, 0.2375%). **Organic** has the lowest revenue ($632,520) and **social** the lowest conversion rate (0.2307%). Overall conversion rates from unique visitors to paid orders are very low (~0.23-0.24%), indicating significant room for funnel optimization across all channels.",
+        "rows": 4,
+        "artifactId": 78,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "SKIP",
+          "documentTopK": 0,
+          "documentCharBudget": 0,
+          "documentChunkCount": 0,
+          "structuredPromptChars": 679,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 307,
+          "documentPromptChars": 105
+        }
+      },
+      "duration_seconds": 16.047,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\workspace\\traffic_orders_join_signal.json",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_traffic.csv"
+        ],
+        "query": "Using SQL only, join the traffic and orders tables by product_id and date, then summarize by traffic channel. Return channel, total page views, total unique visitors, paid order count, paid revenue, and a concise conversion-rate summary."
+      },
+      "setup_documents_requested": 0,
+      "setup_resources_created": [],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    }
+  ]
+}

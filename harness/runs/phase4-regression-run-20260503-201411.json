@@ -1,0 +1,165 @@
+{
+  "generated_at": "2026-05-03T20:14:11",
+  "category": "all",
+  "suite": "phase4-regression",
+  "suite_description": "Minimum Phase 4 regression suite covering routing, planning, execution logs, document retrieval, and document-only flow.",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "request_timeout_seconds": 90,
+  "selected_tags": [
+    "phase4-regression"
+  ],
+  "summary": {
+    "byCategory": {
+      "workspace": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0
+      }
+    },
+    "byTag": {
+      "execution-log": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0
+      },
+      "join": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0
+      },
+      "multi-table": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0
+      },
+      "phase4-regression": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0
+      },
+      "sql-only": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0
+      },
+      "workspace": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0
+      }
+    },
+    "byFailureStage": {}
+  },
+  "results": [
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The joined analysis of traffic and orders data by product_id and date, grouped by traffic channel, reveals the following:\n\n- **Ads** channel leads in paid revenue (969,918.75) and has the highest conversion rate (0.238%), with 700,850 page views, 420,576 unique visitors, and 1,000 paid orders.\n- **Referral** channel follows with 701,830 page views, 421,141 unique visitors, 1,000 paid orders, 783,216.25 revenue, and a 0.237% conversion rate.\n- **Social** channel: 701,470 page views, 413,926 unique visitors, 955 paid orders, 817,103.75 revenue, 0.231% conversion rate.\n- **Organic** channel: 700,230 page views, 413,192 unique visitors, 955 paid orders, 632,519.75 revenue, 0.231% conversion rate.\n\nOverall, Ads and Referral perform best in paid order volume and conversion rates, while Ads generates the highest total revenue.",
+        "rows": 4,
+        "artifactId": 166,
+        "generatedSqlPresent": true,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "SKIP",
+          "documentTopK": 0,
+          "documentCharBudget": 0,
+          "documentChunkCount": 0,
+          "structuredPromptChars": 679,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 307,
+          "documentPromptChars": 105
+        },
+        "routeDecision": {
+          "route": "STRUCTURED_QUERY",
+          "reason": "The query can be handled as a structured workspace analysis.",
+          "requiresWorkspaceContext": true,
+          "requiresDocumentContext": false,
+          "allowsSqlGeneration": true
+        },
+        "analysisPlan": {
+          "route": "STRUCTURED_QUERY",
+          "objective": "Answer the workspace question using structured table context and SQL.",
+          "stepTypes": [
+            "ROUTE_DECISION",
+            "BUILD_CONTEXT",
+            "GENERATE_SQL",
+            "EXECUTE_SQL",
+            "SUMMARIZE_RESULT"
+          ],
+          "stepCount": 5
+        },
+        "executionLogs": {
+          "toolTypes": [
+            "SQL_EXECUTION"
+          ],
+          "stepTypes": [
+            "EXECUTE_SQL"
+          ],
+          "successes": [
+            true
+          ],
+          "durationsMs": [
+            16
+          ],
+          "count": 1
+        },
+        "validationReport": {
+          "passed": true,
+          "findings": []
+        },
+        "riskNotices": [],
+        "analysisReport": {
+          "rowCount": 4,
+          "recommendedChart": "BAR",
+          "generatedCodeOrSqlPresent": true,
+          "evidence": {
+            "datasetCount": 2,
+            "documentChunkCount": 0,
+            "documentNames": [],
+            "documentStrategy": "SKIP"
+          },
+          "riskNoticeCount": 0,
+          "executionLogCount": 1
+        }
+      },
+      "duration_seconds": 14.688,
+      "failure_stage": null,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\workspace\\traffic_orders_join_signal.json",
+      "tags": [
+        "workspace",
+        "multi-table",
+        "join",
+        "sql-only",
+        "execution-log",
+        "phase4-regression"
+      ],
+      "description": "Join traffic and orders into a stable channel-level SQL summary.",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_traffic.csv"
+        ],
+        "query": "Using SQL only, join the traffic and orders tables by product_id and date, then summarize by traffic channel. Return channel, total page views, total unique visitors, paid order count, paid revenue, and a concise conversion-rate summary."
+      },
+      "setup_documents_requested": 0,
+      "setup_resources_created": [],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    }
+  ]
+}

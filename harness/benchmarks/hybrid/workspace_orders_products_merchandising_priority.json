@@ -2,6 +2,7 @@
   "id": "hybrid_workspace_orders_products_merchandising_priority",
   "category": "hybrid",
   "description": "Join orders and products, then incorporate a merchandising note about the strategic category focus.",
+  "tags": ["hybrid", "multi-table", "document-retrieval", "policy-note", "phase4-regression"],
   "setup": {
     "documents": [
       {
@@ -20,6 +21,47 @@
     "success": true,
     "min_rows": 1,
     "required_columns_any": ["category", "product_category", "revenue", "total_revenue", "payment_amount", "paid_revenue"],
-    "summary_contains_any": ["手机", "strategic", "launch focus", "strategic launch focus", "focus category", "merchandising"]
+    "summary_contains_any": ["手机", "strategic", "launch focus", "strategic launch focus", "focus category", "merchandising"],
+    "context_summary_exact": {
+      "structuredSource": "WORKSPACE_SCHEMA",
+      "documentSource": "DOCUMENT_RETRIEVAL",
+      "semanticSource": "WORKSPACE_METADATA",
+      "documentStrategy": "HEAVY"
+    },
+    "context_summary_min": {
+      "datasetCount": 2,
+      "documentChunkCount": 1,
+      "documentTopK": 4,
+      "documentCharBudget": 2600,
+      "documentPromptChars": 1
+    },
+    "route_decision_exact": {
+      "route": "HYBRID_ANALYSIS",
+      "requiresWorkspaceContext": true,
+      "requiresDocumentContext": true,
+      "allowsSqlGeneration": true
+    },
+    "analysis_plan_step_types_exact": [
+      "ROUTE_DECISION",
+      "BUILD_CONTEXT",
+      "RETRIEVE_DOCUMENTS",
+      "GENERATE_SQL",
+      "EXECUTE_SQL",
+      "SUMMARIZE_RESULT"
+    ],
+    "analysis_report_evidence_exact": {
+      "datasetCount": 2,
+      "documentStrategy": "HEAVY"
+    },
+    "analysis_report_evidence_min": {
+      "documentChunkCount": 1
+    },
+    "validation_report_exact": {
+      "passed": true,
+      "findingCount": 0
+    },
+    "risk_notices_exact": {
+      "count": 0
+    }
   }
 }

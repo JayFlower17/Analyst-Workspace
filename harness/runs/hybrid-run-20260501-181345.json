@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-05-01T18:13:45",
+  "category": "hybrid",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "request_timeout_seconds": 120,
+  "results": [
+    {
+      "case_id": "hybrid_workspace_orders_products_merchandising_priority",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The paid revenue by product category shows that 手机 (Mobile Phones) leads with ¥698,031.25 in paid revenue, followed by 美妆 (Cosmetics) at ¥633,245.25 and 家电 (Home Appliances) at ¥612,073.50. According to the workspace's Merchandising Priority Note, the 手机 (Mobile Phone) category is the designated strategic launch focus, and it also happens to rank first in actual revenue performance, making it the top-priority category for both strategic and revenue perspectives.",
+        "rows": 6,
+        "artifactId": 75
+      },
+      "duration_seconds": 11.672,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\hybrid\\workspace_orders_products_merchandising_priority.json",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_products.csv"
+        ],
+        "query": "Join the orders and products tables, summarize paid revenue by product category, and mention which category is the strategic launch focus according to the merchandising note."
+      },
+      "setup_documents_requested": 1
+    }
+  ]
+}

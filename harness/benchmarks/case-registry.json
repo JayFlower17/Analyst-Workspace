@@ -1,0 +1,181 @@
+{
+  "schemaVersion": 1,
+  "description": "Machine-readable registry for benchmark case coverage.",
+  "caseFormat": {
+    "requiredFields": ["id", "category", "description", "tags", "request", "expectations"],
+    "optionalFields": ["setup"],
+    "categories": ["structured", "workspace", "hybrid"]
+  },
+  "tagTaxonomy": {
+    "suite": ["smoke", "phase4-regression"],
+    "inputShape": ["single-table", "multi-table", "document-only"],
+    "operation": ["aggregation", "ranking", "join", "sql-only"],
+    "source": ["document-retrieval", "workspace-note", "policy", "policy-note"],
+    "observability": ["execution-log"]
+  },
+  "cases": [
+    {
+      "id": "structured_employees_department_summary",
+      "category": "structured",
+      "path": "harness/benchmarks/structured/employees_department_summary.json",
+      "description": "Summarize employee counts by department.",
+      "tags": ["structured", "single-table", "aggregation", "smoke"],
+      "route": "LEGACY_DATASET",
+      "executors": ["SQL_OR_PYTHON_LEGACY"],
+      "sources": ["dataset"],
+      "assertions": ["success", "min_rows", "required_columns_any"]
+    },
+    {
+      "id": "structured_sales_monthly_rollup",
+      "category": "structured",
+      "path": "harness/benchmarks/structured/sales_monthly_rollup.json",
+      "description": "Aggregate sales by month.",
+      "tags": ["structured", "single-table", "aggregation", "smoke"],
+      "route": "LEGACY_DATASET",
+      "executors": ["SQL_OR_PYTHON_LEGACY"],
+      "sources": ["dataset"],
+      "assertions": ["success", "min_rows", "required_columns_any"]
+    },
+    {
+      "id": "structured_website_traffic_top_source",
+      "category": "structured",
+      "path": "harness/benchmarks/structured/website_traffic_top_source.json",
+      "description": "Find the strongest traffic source.",
+      "tags": ["structured", "single-table", "ranking", "smoke"],
+      "route": "LEGACY_DATASET",
+      "executors": ["SQL_OR_PYTHON_LEGACY"],
+      "sources": ["dataset"],
+      "assertions": ["success", "min_rows", "required_columns_any"]
+    },
+    {
+      "id": "workspace_orders_users_join_overview",
+      "category": "workspace",
+      "path": "harness/benchmarks/workspace/orders_users_join_overview.json",
+      "description": "Join orders and users for a simple grouped overview.",
+      "tags": ["workspace", "multi-table", "join", "aggregation", "smoke"],
+      "route": "STRUCTURED_QUERY",
+      "executors": ["SQL_EXECUTION"],
+      "sources": ["workspace_schema", "workspace_metadata"],
+      "assertions": ["success", "min_rows", "required_columns_any"]
+    },
+    {
+      "id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "path": "harness/benchmarks/workspace/traffic_orders_join_signal.json",
+      "description": "Join traffic and orders into a stable channel-level SQL summary.",
+      "tags": ["workspace", "multi-table", "join", "sql-only", "execution-log", "phase4-regression"],
+      "route": "STRUCTURED_QUERY",
+      "executors": ["SQL_EXECUTION"],
+      "sources": ["workspace_schema", "workspace_metadata"],
+      "assertions": [
+        "success",
+        "min_rows",
+        "required_columns_any",
+        "context_summary_exact",
+        "context_summary_min",
+        "route_decision_exact",
+        "analysis_plan_step_types_exact",
+        "execution_log_tool_types_exact",
+        "analysis_report_evidence_exact",
+        "validation_report_exact",
+        "risk_notices_exact"
+      ]
+    },
+    {
+      "id": "hybrid_workspace_orders_products_merchandising_priority",
+      "category": "hybrid",
+      "path": "harness/benchmarks/hybrid/workspace_orders_products_merchandising_priority.json",
+      "description": "Join orders and products, then incorporate a merchandising note about the strategic category focus.",
+      "tags": ["hybrid", "multi-table", "document-retrieval", "policy-note", "phase4-regression"],
+      "route": "HYBRID_ANALYSIS",
+      "executors": ["DOCUMENT_RETRIEVAL", "SQL_EXECUTION"],
+      "sources": ["workspace_schema", "workspace_metadata", "document_chunks"],
+      "assertions": [
+        "success",
+        "min_rows",
+        "required_columns_any",
+        "summary_contains_any",
+        "context_summary_exact",
+        "context_summary_min",
+        "route_decision_exact",
+        "analysis_plan_step_types_exact",
+        "analysis_report_evidence_exact",
+        "analysis_report_evidence_min",
+        "validation_report_exact",
+        "risk_notices_exact"
+      ]
+    },
+    {
+      "id": "hybrid_workspace_orders_products_revenue_policy",
+      "category": "hybrid",
+      "path": "harness/benchmarks/hybrid/workspace_orders_products_revenue_policy.json",
+      "description": "Join orders and products, then apply the revenue recognition policy from a document to category revenue.",
+      "tags": ["hybrid", "multi-table", "document-retrieval", "policy", "phase4-regression"],
+      "route": "HYBRID_ANALYSIS",
+      "executors": ["DOCUMENT_RETRIEVAL", "SQL_EXECUTION"],
+      "sources": ["workspace_schema", "workspace_metadata", "document_chunks"],
+      "assertions": [
+        "success",
+        "min_rows",
+        "required_columns_any",
+        "summary_contains_any",
+        "context_summary_exact",
+        "context_summary_min",
+        "route_decision_exact",
+        "analysis_plan_step_types_exact",
+        "analysis_report_evidence_exact",
+        "analysis_report_evidence_min",
+        "validation_report_exact",
+        "risk_notices_exact"
+      ]
+    },
+    {
+      "id": "hybrid_workspace_orders_users_note_priority",
+      "category": "hybrid",
+      "path": "harness/benchmarks/hybrid/workspace_orders_users_note_priority.json",
+      "description": "Join orders and users, then incorporate a workspace note about which segment to highlight first.",
+      "tags": ["hybrid", "multi-table", "document-retrieval", "workspace-note", "phase4-regression"],
+      "route": "HYBRID_ANALYSIS",
+      "executors": ["DOCUMENT_RETRIEVAL", "SQL_EXECUTION"],
+      "sources": ["workspace_schema", "workspace_metadata", "document_chunks"],
+      "assertions": [
+        "success",
+        "min_rows",
+        "required_columns_any",
+        "summary_contains_any",
+        "context_summary_exact",
+        "context_summary_min",
+        "route_decision_exact",
+        "analysis_plan_step_types_exact",
+        "analysis_report_evidence_exact",
+        "analysis_report_evidence_min",
+        "validation_report_exact",
+        "risk_notices_exact"
+      ]
+    },
+    {
+      "id": "hybrid_workspace_revenue_policy_document_only",
+      "category": "hybrid",
+      "path": "harness/benchmarks/hybrid/workspace_revenue_policy_document_only.json",
+      "description": "Answer a revenue policy question from workspace documents without generating SQL.",
+      "tags": ["hybrid", "document-only", "document-retrieval", "policy", "phase4-regression"],
+      "route": "DOCUMENT_EXPLANATION",
+      "executors": ["DOCUMENT_RETRIEVAL"],
+      "sources": ["workspace_schema", "workspace_metadata", "document_chunks"],
+      "assertions": [
+        "success",
+        "generated_sql_absent",
+        "summary_contains_any",
+        "context_summary_exact",
+        "context_summary_min",
+        "route_decision_exact",
+        "analysis_plan_step_types_exact",
+        "execution_log_tool_types_exact",
+        "analysis_report_evidence_exact",
+        "analysis_report_evidence_min",
+        "validation_report_exact",
+        "risk_notices_exact"
+      ]
+    }
+  ]
+}

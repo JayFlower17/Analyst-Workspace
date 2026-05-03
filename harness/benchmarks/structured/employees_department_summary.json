@@ -2,6 +2,7 @@
   "id": "structured_employees_department_summary",
   "category": "structured",
   "description": "Summarize employee counts by department.",
+  "tags": ["structured", "single-table", "aggregation", "smoke"],
   "request": {
     "datasetId": 1,
     "query": "Count employees by department and sort from high to low."

@@ -9,6 +9,12 @@ import org.springframework.stereotype.Service;
 
 import com.analysis.model.dto.AnalysisRequest;
 import com.analysis.model.dto.DocumentChunkSearchResult;
+import com.analysis.model.context.DocumentContext;
+import com.analysis.model.context.SemanticContext;
+import com.analysis.model.context.StructuredContext;
+import com.analysis.model.context.UnifiedAnalysisContext;
+import com.analysis.model.execution.RetrievalExecutionResult;
+import com.analysis.model.execution.ToolExecutionLog;
 import com.analysis.service.WorkspaceSchemaService.WorkspaceSchemaContext;
 
 import lombok.RequiredArgsConstructor;
@@ -24,56 +30,96 @@ public class WorkspaceContextAssembler {
     private static final int DEFAULT_DOC_CHAR_BUDGET = 1600;
     private static final int DOC_HEAVY_CHAR_BUDGET = 2600;
 
-    private final DocumentService documentService;
+    private final RetrievalExecutor retrievalExecutor;
 
     public record WorkspaceAnalysisContext(
             String businessContextPrompt,
             String schemaPrompt,
             String relationPrompt,
             String documentContextPrompt,
-            String documentStrategy) {
+            String documentStrategy,
+            List<ToolExecutionLog> executionLogs,
+            UnifiedAnalysisContext unifiedContext) {
     }
 
     public WorkspaceAnalysisContext assemble(AnalysisRequest request, WorkspaceSchemaContext schemaContext)
             throws SQLException {
-        String documentContext = buildDocumentContext(request);
-        return new WorkspaceAnalysisContext(
-                schemaContext.businessContextPrompt(),
+        DocumentContextBuildResult documentBuildResult = buildDocumentContext(request);
+        DocumentContext documentContext = documentBuildResult.documentContext();
+        StructuredContext structuredContext = new StructuredContext(
+                schemaContext.groupId(),
+                schemaContext.datasets(),
+                schemaContext.relations(),
                 schemaContext.schemaPrompt(),
-                schemaContext.relationPrompt(),
+                schemaContext.relationPrompt());
+        SemanticContext semanticContext = new SemanticContext(schemaContext.businessContextPrompt());
+        UnifiedAnalysisContext unifiedContext = new UnifiedAnalysisContext(
+                structuredContext,
                 documentContext,
-                classifyDocumentNeed(request.getQuery()).name());
+                semanticContext);
+        log.info("[ContextAssembler] Unified context summary: {}", unifiedContext.summary());
+
+        return new WorkspaceAnalysisContext(
+                unifiedContext.businessContextPrompt(),
+                unifiedContext.schemaPrompt(),
+                unifiedContext.relationPrompt(),
+                unifiedContext.documentPrompt(),
+                documentContext.strategy(),
+                documentBuildResult.executionLogs(),
+                unifiedContext);
     }
 
-    private String buildDocumentContext(AnalysisRequest request) throws SQLException {
+    private DocumentContextBuildResult buildDocumentContext(AnalysisRequest request) throws SQLException {
         if (request.getGroupId() == null) {
-            return "No workspace document context available.";
+            return new DocumentContextBuildResult(emptyDocumentContext(
+                    DocumentNeed.SKIP,
+                    "No workspace document context available."), List.of());
         }
 
         DocumentNeed documentNeed = classifyDocumentNeed(request.getQuery());
         if (documentNeed == DocumentNeed.SKIP) {
             log.info("[ContextAssembler] Skipping document retrieval for query: {}", request.getQuery());
-            return "Document context omitted for this query because it appears to be a direct structured aggregation request.";
+            return new DocumentContextBuildResult(emptyDocumentContext(
+                    documentNeed,
+                    "Document context omitted for this query because it appears to be a direct structured aggregation request."), List.of());
         }
 
         int topK = documentNeed == DocumentNeed.HEAVY ? DOC_HEAVY_TOP_K : DEFAULT_DOC_TOP_K;
         int charBudget = documentNeed == DocumentNeed.HEAVY ? DOC_HEAVY_CHAR_BUDGET : DEFAULT_DOC_CHAR_BUDGET;
 
-        List<DocumentChunkSearchResult> results = documentService.searchDocumentChunks(
+        RetrievalExecutionResult retrievalResult = retrievalExecutor.retrieve(
                 request.getGroupId(),
                 request.getQuery(),
                 topK);
+        if (!retrievalResult.success()) {
+            log.warn("[ContextAssembler] Document retrieval failed for query: {} | {}",
+                    request.getQuery(), retrievalResult.message());
+            return new DocumentContextBuildResult(new DocumentContext(
+                    documentNeed.name(),
+                    topK,
+                    charBudget,
+                    List.of(),
+                    retrievalResult.message()), List.of(retrievalResult.executionLog()));
+        }
+
+        List<DocumentChunkSearchResult> results = retrievalResult.chunks();
         results = prioritizeForPrompt(results, documentNeed);
 
         if (results.isEmpty()) {
             log.info("[ContextAssembler] No document context found for query: {}", request.getQuery());
-            return "No relevant document context found.";
+            return new DocumentContextBuildResult(new DocumentContext(
+                    documentNeed.name(),
+                    topK,
+                    charBudget,
+                    List.of(),
+                    "No relevant document context found."), List.of(retrievalResult.executionLog()));
         }
 
         StringBuilder sb = new StringBuilder();
         sb.append("Retrieved Document Chunks:\n");
         int remainingBudget = charBudget;
         int includedCount = 0;
+        List<DocumentChunkSearchResult> includedChunks = new java.util.ArrayList<>();
 
         for (DocumentChunkSearchResult result : results) {
             if (remainingBudget <= 0) {
@@ -96,20 +142,42 @@ public class WorkspaceContextAssembler {
             sb.append(clipped).append("\n\n");
             remainingBudget -= (header.length() + clipped.length() + 2);
             includedCount++;
+            includedChunks.add(result);
         }
 
         log.info("[ContextAssembler] Included {} document context blocks using {} strategy with {} char budget for query: {}",
                 includedCount, documentNeed.name(), charBudget, request.getQuery());
 
         if (includedCount == 0) {
-            return "Relevant document chunks were found, but none fit within the current context budget.";
+            return new DocumentContextBuildResult(new DocumentContext(
+                    documentNeed.name(),
+                    topK,
+                    charBudget,
+                    List.of(),
+                    "Relevant document chunks were found, but none fit within the current context budget."),
+                    List.of(retrievalResult.executionLog()));
         }
 
         if (remainingBudget <= 0) {
             sb.append("(Document context truncated to fit prompt budget)");
         }
 
-        return sb.toString().trim();
+        return new DocumentContextBuildResult(new DocumentContext(
+                documentNeed.name(),
+                topK,
+                charBudget,
+                includedChunks,
+                sb.toString().trim()),
+                List.of(retrievalResult.executionLog()));
+    }
+
+    private DocumentContext emptyDocumentContext(DocumentNeed documentNeed, String prompt) {
+        return new DocumentContext(
+                documentNeed.name(),
+                0,
+                0,
+                List.of(),
+                prompt);
     }
 
     private String buildChunkHeader(DocumentChunkSearchResult result) {
@@ -212,5 +280,10 @@ public class WorkspaceContextAssembler {
         SKIP,
         LIGHT,
         HEAVY
+    }
+
+    private record DocumentContextBuildResult(
+            DocumentContext documentContext,
+            List<ToolExecutionLog> executionLogs) {
     }
 }

@@ -1,0 +1,30 @@
+{
+  "id": "phase4-regression",
+  "description": "Minimum Phase 4 regression suite covering routing, planning, execution logs, document retrieval, and document-only flow.",
+  "category": "all",
+  "tags": ["phase4-regression"],
+  "caseIds": [
+    "workspace_traffic_orders_join_signal",
+    "hybrid_workspace_orders_products_merchandising_priority",
+    "hybrid_workspace_orders_products_revenue_policy",
+    "hybrid_workspace_orders_users_note_priority",
+    "hybrid_workspace_revenue_policy_document_only"
+  ],
+  "coverage": {
+    "routes": ["STRUCTURED_QUERY", "HYBRID_ANALYSIS", "DOCUMENT_EXPLANATION"],
+    "executors": ["SQL_EXECUTION", "DOCUMENT_RETRIEVAL"],
+    "sources": ["workspace_schema", "workspace_metadata", "document_chunks"],
+    "assertions": [
+      "context_summary_exact",
+      "context_summary_min",
+      "route_decision_exact",
+      "analysis_plan_step_types_exact",
+      "execution_log_tool_types_exact",
+      "generated_sql_absent",
+      "analysis_report_evidence_exact",
+      "analysis_report_evidence_min",
+      "validation_report_exact",
+      "risk_notices_exact"
+    ]
+  }
+}

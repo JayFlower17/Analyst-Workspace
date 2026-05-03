@@ -2,6 +2,7 @@
   "id": "workspace_orders_users_join_overview",
   "category": "workspace",
   "description": "Join orders and users for a simple grouped overview.",
+  "tags": ["workspace", "multi-table", "join", "aggregation", "smoke"],
   "request": {
     "groupId": 1,
     "focusDatasetNames": ["stage2_orders.csv", "stage2_users.csv"],

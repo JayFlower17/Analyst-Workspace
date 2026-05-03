@@ -1,0 +1,120 @@
+{
+  "generated_at": "2026-05-03T16:51:46",
+  "category": "all",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "request_timeout_seconds": 90,
+  "selected_tags": [
+    "phase4-regression"
+  ],
+  "results": [
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The analysis joins traffic and orders tables by product_id and date, then summarizes key metrics per traffic channel. Results show: (1) **ads** channel leads with paid revenue of $969,919 and 1,000 paid orders from 420,576 unique visitors (conversion rate 0.2378%); (2) **social** follows with $817,104 revenue and 955 paid orders (0.2307% conversion); (3) **referral** has $783,216 revenue and 1,000 paid orders (0.2375% conversion); (4) **organic** trails with $632,520 revenue and 955 paid orders (0.2311% conversion). All channels have roughly 700K total page views each. Conversion rates are very low across the board (≈0.23%), indicating significant room for funnel optimization.",
+        "rows": 4,
+        "artifactId": 145,
+        "generatedSqlPresent": true,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "SKIP",
+          "documentTopK": 0,
+          "documentCharBudget": 0,
+          "documentChunkCount": 0,
+          "structuredPromptChars": 679,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 307,
+          "documentPromptChars": 105
+        },
+        "routeDecision": {
+          "route": "STRUCTURED_QUERY",
+          "reason": "The query can be handled as a structured workspace analysis.",
+          "requiresWorkspaceContext": true,
+          "requiresDocumentContext": false,
+          "allowsSqlGeneration": true
+        },
+        "analysisPlan": {
+          "route": "STRUCTURED_QUERY",
+          "objective": "Answer the workspace question using structured table context and SQL.",
+          "stepTypes": [
+            "ROUTE_DECISION",
+            "BUILD_CONTEXT",
+            "GENERATE_SQL",
+            "EXECUTE_SQL",
+            "SUMMARIZE_RESULT"
+          ],
+          "stepCount": 5
+        },
+        "executionLogs": {
+          "toolTypes": [
+            "SQL_EXECUTION"
+          ],
+          "stepTypes": [
+            "EXECUTE_SQL"
+          ],
+          "successes": [
+            true
+          ],
+          "durationsMs": [
+            23
+          ],
+          "count": 1
+        },
+        "validationReport": {
+          "passed": true,
+          "findings": []
+        },
+        "riskNotices": [],
+        "analysisReport": {
+          "rowCount": 4,
+          "recommendedChart": "BAR",
+          "generatedCodeOrSqlPresent": true,
+          "evidence": {
+            "datasetCount": 2,
+            "documentChunkCount": 0,
+            "documentNames": [],
+            "documentStrategy": "SKIP"
+          },
+          "riskNoticeCount": 0,
+          "executionLogCount": 1
+        }
+      },
+      "duration_seconds": 14.0,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\workspace\\traffic_orders_join_signal.json",
+      "tags": [
+        "workspace",
+        "multi-table",
+        "join",
+        "sql-only",
+        "execution-log",
+        "phase4-regression"
+      ],
+      "description": "Join traffic and orders into a stable channel-level SQL summary.",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_traffic.csv"
+        ],
+        "query": "Using SQL only, join the traffic and orders tables by product_id and date, then summarize by traffic channel. Return channel, total page views, total unique visitors, paid order count, paid revenue, and a concise conversion-rate summary."
+      },
+      "setup_documents_requested": 0,
+      "setup_resources_created": [],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    }
+  ]
+}

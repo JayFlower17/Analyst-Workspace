@@ -21,6 +21,33 @@
 - `phase2-kickoff.md`  
   Phase 2 起步文档，记录文档资产建模、上传接口和本地验证方式。
 
+- `phase3-kickoff.md`
+  Phase 3 起步文档，记录统一上下文模型、workspace context assembler 接入和下一步演进入口。
+
+- `phase3-closeout.md`
+  Phase 3 收尾文档，记录统一上下文层、联合问题验证、benchmark 结果和 Phase 4 入口建议。
+
+- `phase4-kickoff.md`
+  Phase 4 起步文档，记录问题路由层、route decision 响应和 benchmark 断言。
+
+- `phase4-closeout.md`
+  Phase 4 收尾文档，记录 Agent 编排、执行日志、质量防线、统一输出层和验证结果。
+
+- `phase5-closeout.md`
+  Phase 5 收尾文档，记录 harness 回归能力、常用命令、report diff、验证结果和 Phase 6 交接建议。
+
+- `phase6-artifact-schema-design.md`
+  Phase 6 artifact schema 设计文档，记录分析报告、证据、执行过程、校验和风险提示的持久化方案。
+
+- `phase6-artifact-management-design.md`
+  Phase 6 artifact 管理设计文档，记录历史分析列表管理、筛选、详情入口和后续归档/删除接口方案。
+
+- `phase6-closeout.md`
+  Phase 6 收尾文档，记录 artifact 持久化、详情回放、历史分析管理、回归报告和已知限制。
+
+- `phase5-6-task-plan.md`
+  Phase 5 和 Phase 6 的 15 个小任务拆分，作为后续连续推进的任务清单。
+
 - `frontend-next-migration.md`  
   前端迁移路线，说明为什么保留 `frontend/`、为什么未来转向 `frontend-next/`。
 

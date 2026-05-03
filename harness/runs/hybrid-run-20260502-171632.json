@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-05-02T17:16:32",
+  "category": "hybrid",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "request_timeout_seconds": 180,
+  "results": [
+    {
+      "case_id": "hybrid_workspace_orders_users_note_priority",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "After joining the orders and users tables, order counts and revenue were summarized by VIP level (user segment). All three VIP levels (L1, L2, L3) have the same number of users (40 each) and identical order counts (1,710 each). However, when looking at total payment revenue, the **L3 segment** (highest VIP tier) leads with ¥1,456,358.50 in total revenue and ¥36,408.96 revenue per user, outperforming L2 (¥1,364,718.00) and L1 (¥1,367,439.50). According to the workspace analysis note, VIP/premium-like segments should be treated as the highest-priority customer cohort. Therefore, **L3 (the top VIP tier) should be highlighted first**, as it generates the highest revenue per user and total revenue among all segments.",
+        "rows": 3,
+        "artifactId": 79,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "HEAVY",
+          "documentTopK": 4,
+          "documentCharBudget": 2600,
+          "documentChunkCount": 2,
+          "structuredPromptChars": 674,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 305,
+          "documentPromptChars": 1055
+        }
+      },
+      "duration_seconds": 18.656,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\hybrid\\workspace_orders_users_note_priority.json",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_users.csv"
+        ],
+        "query": "Join the orders and users tables, summarize order counts by user segment, and mention which segment should be highlighted first according to the workspace note."
+      },
+      "setup_documents_requested": 1,
+      "setup_resources_created": [
+        {
+          "type": "document",
+          "id": 27
+        }
+      ],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    }
+  ]
+}

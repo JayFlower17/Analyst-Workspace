@@ -1,0 +1,121 @@
+{
+  "generated_at": "2026-05-03T11:08:02",
+  "category": "hybrid",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "request_timeout_seconds": 90,
+  "results": [
+    {
+      "case_id": "hybrid_workspace_orders_products_revenue_policy",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "Based on the Revenue Recognition Policy, recognized commerce revenue was calculated by joining the orders and products tables, filtering only orders with order_status = 'PAID', and excluding all REFUNDED orders. A total of 1,220 refunded orders (amounting to ¥985,757.50) were excluded per policy. The top-performing category by recognized revenue is 手机 (Mobile Phones) with ¥698,031.25, followed by 美妆 (Beauty) at ¥633,245.25, 家电 (Home Appliances) at ¥612,073.50, 食品 (Food) at ¥443,939.75, 服饰 (Apparel) at ¥415,348.00, and 电脑 (Computers) at ¥400,120.75. Each category had 20 unique customers, indicating broad customer engagement across all product categories.",
+        "rows": 6,
+        "artifactId": 143,
+        "generatedSqlPresent": true,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "HEAVY",
+          "documentTopK": 4,
+          "documentCharBudget": 2600,
+          "documentChunkCount": 2,
+          "structuredPromptChars": 651,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 308,
+          "documentPromptChars": 1161
+        },
+        "routeDecision": {
+          "route": "HYBRID_ANALYSIS",
+          "reason": "The query references document, policy, rule, priority, or explanatory context.",
+          "requiresWorkspaceContext": true,
+          "requiresDocumentContext": true,
+          "allowsSqlGeneration": true
+        },
+        "analysisPlan": {
+          "route": "HYBRID_ANALYSIS",
+          "objective": "Answer the workspace question by combining table analysis with retrieved document context.",
+          "stepTypes": [
+            "ROUTE_DECISION",
+            "BUILD_CONTEXT",
+            "RETRIEVE_DOCUMENTS",
+            "GENERATE_SQL",
+            "EXECUTE_SQL",
+            "SUMMARIZE_RESULT"
+          ],
+          "stepCount": 6
+        },
+        "executionLogs": {
+          "toolTypes": [
+            "DOCUMENT_RETRIEVAL",
+            "SQL_EXECUTION"
+          ],
+          "stepTypes": [
+            "RETRIEVE_DOCUMENTS",
+            "EXECUTE_SQL"
+          ],
+          "successes": [
+            true,
+            true
+          ],
+          "durationsMs": [
+            26,
+            18
+          ],
+          "count": 2
+        },
+        "validationReport": {
+          "passed": true,
+          "findings": []
+        },
+        "riskNotices": [],
+        "analysisReport": {
+          "rowCount": 6,
+          "recommendedChart": "BAR",
+          "generatedCodeOrSqlPresent": true,
+          "evidence": {
+            "datasetCount": 2,
+            "documentChunkCount": 2,
+            "documentNames": [
+              "Revenue Recognition Policy",
+              "Workspace Analysis Note"
+            ],
+            "documentStrategy": "HEAVY"
+          },
+          "riskNoticeCount": 0,
+          "executionLogCount": 2
+        }
+      },
+      "duration_seconds": 12.125,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\hybrid\\workspace_orders_products_revenue_policy.json",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_products.csv"
+        ],
+        "query": "Join the orders and products tables, summarize recognized commerce revenue by product category according to the revenue recognition policy, and explain how refunded orders are treated."
+      },
+      "setup_documents_requested": 1,
+      "setup_resources_created": [
+        {
+          "type": "document",
+          "id": 79
+        }
+      ],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    }
+  ]
+}

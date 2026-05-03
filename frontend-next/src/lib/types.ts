@@ -117,6 +117,16 @@ export type Artifact = {
   summary?: string;
   chartType?: string;
   resultPreviewJson?: string;
+  artifactSchemaVersion?: number | null;
+  analysisReportJson?: string | null;
+  evidenceSummaryJson?: string | null;
+  executionLogsJson?: string | null;
+  validationReportJson?: string | null;
+  riskNoticesJson?: string | null;
+  artifactStatus?: "ACTIVE" | "ARCHIVED" | "DELETED" | string | null;
+  archivedAt?: string | null;
+  deletedAt?: string | null;
+  updatedAt?: string | null;
   createdAt?: string;
 };
 
@@ -141,6 +151,71 @@ export type MessageResponse = {
   message?: string;
 };
 
+export type AnalysisEvidenceSummary = {
+  groupId?: number;
+  datasetCount?: number;
+  relationCount?: number;
+  datasetNames?: string[];
+  documentStrategy?: string;
+  documentChunkCount?: number;
+  documentNames?: string[];
+  hasSemanticContext?: boolean;
+};
+
+export type AnalysisValidationFinding = {
+  code?: string;
+  severity?: string;
+  message?: string;
+};
+
+export type AnalysisValidationReport = {
+  passed?: boolean;
+  findings?: AnalysisValidationFinding[];
+};
+
+export type RiskNotice = {
+  code?: string;
+  severity?: string;
+  message?: string;
+  source?: string;
+};
+
+export type ToolExecutionLog = {
+  toolType?: string;
+  toolName?: string;
+  stepType?: string;
+  success?: boolean;
+  message?: string;
+  durationMs?: number;
+  input?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  inputSummary?: string;
+  outputSummary?: string;
+};
+
+export type AnalysisReport = {
+  summary?: string;
+  data?: Record<string, unknown>[];
+  rowCount?: number;
+  recommendedChart?: string;
+  generatedCodeOrSql?: string;
+  generatedCodeOrSqlPresent?: boolean;
+  evidence?: AnalysisEvidenceSummary;
+  validationReport?: AnalysisValidationReport;
+  riskNotices?: RiskNotice[];
+  executionLogs?: ToolExecutionLog[];
+};
+
+export type ArtifactDetail = Artifact & {
+  resultPreview?: Record<string, unknown>[];
+  reportAvailable?: boolean;
+  analysisReport?: AnalysisReport | null;
+  evidence?: AnalysisEvidenceSummary | null;
+  executionLogs?: ToolExecutionLog[];
+  validationReport?: AnalysisValidationReport | null;
+  riskNotices?: RiskNotice[];
+};
+
 export type AnalysisResult = {
   success: boolean;
   message?: string;
@@ -151,4 +226,8 @@ export type AnalysisResult = {
   recommendedChart?: string;
   executionTime?: number;
   artifactId?: number;
+  analysisReport?: AnalysisReport;
+  validationReport?: AnalysisValidationReport;
+  riskNotices?: RiskNotice[];
+  executionLogs?: ToolExecutionLog[];
 };

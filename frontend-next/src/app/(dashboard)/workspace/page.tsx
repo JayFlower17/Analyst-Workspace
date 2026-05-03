@@ -2,13 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Archive,
+  CheckCircle2,
+  CircleAlert,
+  Clock3,
+  Database,
+  Eye,
   FileSearch,
   FileText,
   FolderTree,
   GitBranch,
+  ListChecks,
   Loader2,
   PencilLine,
   Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
   Sparkles,
   Trash2,
   Upload,
@@ -17,14 +27,19 @@ import {
 import { toast } from "sonner";
 import { artifactApi, datasetApi, documentApi, workplaceApi } from "@/lib/api/client";
 import type {
+  AnalysisEvidenceSummary,
   AnalysisResult,
+  AnalysisValidationReport,
   Artifact,
+  ArtifactDetail,
   Dataset,
   DatasetColumnInfo,
   DatasetRelation,
   DocumentAsset,
   DocumentChunk,
   DocumentSearchResult,
+  RiskNotice,
+  ToolExecutionLog,
   Workspace,
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -61,6 +76,358 @@ const emptyRelationForm: RelationFormState = {
   confidence: "",
 };
 
+type EvidenceSourcesPanelProps = {
+  evidence?: AnalysisEvidenceSummary;
+};
+
+type AnalysisProcessPanelProps = {
+  executionLogs?: ToolExecutionLog[];
+  validationReport?: AnalysisValidationReport;
+  riskNotices?: RiskNotice[];
+};
+
+type ArtifactSchemaFilter = "all" | "phase6" | "legacy";
+type ArtifactStatusFilter = "ACTIVE" | "ARCHIVED" | "DELETED";
+
+type ArtifactFilterControlsProps = {
+  search: string;
+  schemaFilter: ArtifactSchemaFilter;
+  statusFilter: ArtifactStatusFilter;
+  totalCount: number;
+  filteredCount: number;
+  refreshing: boolean;
+  disabled?: boolean;
+  onSearchChange: (value: string) => void;
+  onSchemaFilterChange: (value: ArtifactSchemaFilter) => void;
+  onStatusFilterChange: (value: ArtifactStatusFilter) => void;
+  onRefresh: () => void;
+};
+
+type ArtifactCardGridProps = {
+  artifacts: Artifact[];
+  emptyText: string;
+  gridClassName?: string;
+  onOpenDetail: (artifact: Artifact) => void;
+};
+
+function parseArtifactRows(resultPreviewJson?: string): Record<string, unknown>[] {
+  if (!resultPreviewJson) return [];
+  try {
+    const parsed = JSON.parse(resultPreviewJson) as unknown;
+    return Array.isArray(parsed) ? (parsed as Record<string, unknown>[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function formatToolType(toolType?: string) {
+  if (!toolType) return "工具";
+  const normalized = toolType.toUpperCase();
+  if (normalized.includes("SQL")) return "SQL";
+  if (normalized.includes("PYTHON")) return "Python";
+  if (normalized.includes("RETRIEVAL") || normalized.includes("DOCUMENT")) return "文档检索";
+  return toolType.replaceAll("_", " ");
+}
+
+function formatStepType(stepType?: string) {
+  if (!stepType) return "执行步骤";
+  return stepType.replaceAll("_", " ").toLowerCase();
+}
+
+function getArtifactSchemaLabel(artifact: Artifact) {
+  return artifact.artifactSchemaVersion ? `schema v${artifact.artifactSchemaVersion}` : "legacy";
+}
+
+function getArtifactStatusLabel(status?: string | null) {
+  if (status === "ARCHIVED") return "已归档";
+  if (status === "DELETED") return "已删除";
+  return "活跃";
+}
+
+function ArtifactFilterControls({
+  search,
+  schemaFilter,
+  statusFilter,
+  totalCount,
+  filteredCount,
+  refreshing,
+  disabled,
+  onSearchChange,
+  onSchemaFilterChange,
+  onStatusFilterChange,
+  onRefresh,
+}: ArtifactFilterControlsProps) {
+  const schemaFilters: { value: ArtifactSchemaFilter; label: string }[] = [
+    { value: "all", label: "全部" },
+    { value: "phase6", label: "Phase 6" },
+    { value: "legacy", label: "Legacy" },
+  ];
+  const statusFilters: { value: ArtifactStatusFilter; label: string }[] = [
+    { value: "ACTIVE", label: "活跃" },
+    { value: "ARCHIVED", label: "归档" },
+    { value: "DELETED", label: "删除" },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--color-text-tertiary)]" />
+          <Input
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="搜索查询、摘要或代码"
+            className="pl-9"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {schemaFilters.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              data-active={schemaFilter === filter.value}
+              className="pill-toggle"
+              onClick={() => onSchemaFilterChange(filter.value)}
+            >
+              {filter.label}
+            </button>
+          ))}
+          {statusFilters.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              data-active={statusFilter === filter.value}
+              className="pill-toggle"
+              onClick={() => onStatusFilterChange(filter.value)}
+            >
+              {filter.label}
+            </button>
+          ))}
+          <Button variant="outline" size="sm" onClick={onRefresh} disabled={disabled || refreshing}>
+            {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            刷新
+          </Button>
+        </div>
+      </div>
+      <div className="text-xs text-[color:var(--color-text-tertiary)]">
+        当前显示 {filteredCount} / {totalCount} 条历史分析
+      </div>
+    </div>
+  );
+}
+
+function ArtifactCardGrid({ artifacts, emptyText, gridClassName, onOpenDetail }: ArtifactCardGridProps) {
+  if (!artifacts.length) {
+    return <div className="subtle-panel px-4 py-4 text-sm text-[color:var(--color-text-secondary)]">{emptyText}</div>;
+  }
+
+  return (
+    <div className={gridClassName ?? "grid gap-3 md:grid-cols-2 xl:grid-cols-3"}>
+      {artifacts.map((artifact) => (
+        <button
+          key={artifact.id}
+          type="button"
+          onClick={() => onOpenDetail(artifact)}
+          className="subtle-panel text-left px-4 py-4 transition-colors hover:border-[color:rgba(242,201,76,0.28)] hover:bg-[color:#202020]"
+        >
+          <div className="line-clamp-2 text-sm font-medium text-[color:var(--color-text-primary)]">
+            {artifact.userQuery || "分析记录"}
+          </div>
+          <div className="mt-3 line-clamp-4 text-sm leading-6 text-[color:var(--color-text-secondary)]">
+            {artifact.summary || "无摘要"}
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-[color:var(--color-text-tertiary)]">
+            <span>{artifact.createdAt ? new Date(artifact.createdAt).toLocaleString() : ""}</span>
+            <span>
+              {getArtifactSchemaLabel(artifact)} / {getArtifactStatusLabel(artifact.artifactStatus)}
+            </span>
+          </div>
+          <div className="mt-3 flex items-center gap-2 text-xs font-medium text-[color:var(--color-accent)]">
+            <Eye className="h-3.5 w-3.5" />
+            查看详情
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function EvidenceSourcesPanel({ evidence }: EvidenceSourcesPanelProps) {
+  const datasetNames = evidence?.datasetNames?.filter(Boolean) ?? [];
+  const documentNames = evidence?.documentNames?.filter(Boolean) ?? [];
+  const hasEvidence = Boolean(evidence);
+  const hasDatasets = (evidence?.datasetCount ?? 0) > 0 || datasetNames.length > 0;
+  const hasDocuments = (evidence?.documentChunkCount ?? 0) > 0 || documentNames.length > 0;
+
+  return (
+    <div className="subtle-panel px-4 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <FileSearch className="h-4 w-4 text-[color:var(--color-text-tertiary)]" />
+          <div className="text-[11px] uppercase text-[color:var(--color-text-tertiary)]">证据来源</div>
+        </div>
+        {hasEvidence ? (
+          <div className="text-xs text-[color:var(--color-text-tertiary)]">
+            {evidence?.hasSemanticContext ? "已接入语义上下文" : "结构化上下文"}
+          </div>
+        ) : null}
+      </div>
+
+      {hasEvidence ? (
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="rounded-[12px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-3 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-[color:var(--color-text-primary)]">
+                <Database className="h-4 w-4 text-[color:var(--color-text-tertiary)]" />
+                数据表
+              </div>
+              <div className="min-w-0 text-right text-xs text-[color:var(--color-text-tertiary)]">
+                {(evidence?.datasetCount ?? datasetNames.length) || 0} 表 / {evidence?.relationCount ?? 0} 关系
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {hasDatasets ? (
+                datasetNames.slice(0, 8).map((name) => (
+                  <span
+                    key={name}
+                    className="max-w-full break-all rounded-[8px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-2 py-1 text-xs text-[color:var(--color-text-secondary)]"
+                  >
+                    {name}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm text-[color:var(--color-text-secondary)]">本次没有使用数据表证据。</span>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-[12px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-3 py-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-[color:var(--color-text-primary)]">
+                <FileText className="h-4 w-4 text-[color:var(--color-text-tertiary)]" />
+                文档片段
+              </div>
+              <div className="min-w-0 text-right text-xs text-[color:var(--color-text-tertiary)]">
+                {evidence?.documentStrategy ?? "无检索策略"} / {evidence?.documentChunkCount ?? 0} 片段
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {hasDocuments ? (
+                documentNames.slice(0, 8).map((name) => (
+                  <span
+                    key={name}
+                    className="max-w-full break-all rounded-[8px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-2 py-1 text-xs text-[color:var(--color-text-secondary)]"
+                  >
+                    {name}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm text-[color:var(--color-text-secondary)]">本次没有使用文档证据。</span>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-3 text-sm leading-6 text-[color:var(--color-text-secondary)]">
+          分析完成后会显示本次结论引用的数据表、关系和文档片段。
+        </p>
+      )}
+    </div>
+  );
+}
+
+function AnalysisProcessPanel({ executionLogs, validationReport, riskNotices }: AnalysisProcessPanelProps) {
+  const logs = executionLogs ?? [];
+  const findings = validationReport?.findings ?? [];
+  const notices = riskNotices ?? [];
+  const hasProcess = logs.length > 0 || findings.length > 0 || notices.length > 0;
+
+  return (
+    <div className="subtle-panel px-4 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <ListChecks className="h-4 w-4 text-[color:var(--color-text-tertiary)]" />
+          <div className="text-[11px] uppercase text-[color:var(--color-text-tertiary)]">分析过程</div>
+        </div>
+        {hasProcess ? (
+          <div className="text-xs text-[color:var(--color-text-tertiary)]">
+            {logs.length} 步 / {notices.length || findings.length} 条提示
+          </div>
+        ) : null}
+      </div>
+
+      {hasProcess ? (
+        <div className="mt-4 space-y-3">
+          {logs.length ? (
+            <div className="space-y-2">
+              {logs.map((log, index) => (
+                <div
+                  key={`${log.toolType ?? "tool"}-${log.stepType ?? "step"}-${index}`}
+                  className="rounded-[12px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-3 py-3"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      {log.success === false ? (
+                        <CircleAlert className="h-4 w-4 text-[color:#f87171]" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4 text-[color:#86efac]" />
+                      )}
+                      <div className="min-w-0 text-sm font-medium text-[color:var(--color-text-primary)]">
+                        {index + 1}. {formatToolType(log.toolType)} · {formatStepType(log.stepType)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-[color:var(--color-text-tertiary)]">
+                      <Clock3 className="h-3.5 w-3.5" />
+                      {log.durationMs == null ? "-" : `${log.durationMs}ms`}
+                    </div>
+                  </div>
+                  {log.message || log.outputSummary ? (
+                    <div className="mt-2 break-words text-sm leading-6 text-[color:var(--color-text-secondary)]">
+                      {log.message ?? log.outputSummary}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[12px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-3 py-3 text-sm text-[color:var(--color-text-secondary)]">
+              本次响应没有返回执行日志。
+            </div>
+          )}
+
+          {notices.length || findings.length ? (
+            <div className="rounded-[12px] border [border-width:0.5px] border-[color:rgba(248,113,113,0.34)] px-3 py-3">
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-[color:var(--color-text-primary)]">
+                <CircleAlert className="h-4 w-4 text-[color:#fca5a5]" />
+                风险与校验提示
+              </div>
+              <div className="space-y-2">
+                {(notices.length ? notices : findings).slice(0, 6).map((item, index) => (
+                  <div
+                    key={`${item.code ?? "notice"}-${index}`}
+                    className="break-words text-sm leading-6 text-[color:var(--color-text-secondary)]"
+                  >
+                    <span className="text-[color:var(--color-text-tertiary)]">{item.severity ?? "INFO"}</span>
+                    {item.code ? ` · ${item.code}` : ""}: {item.message ?? "需要人工复核。"}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-[12px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-3 py-3 text-sm text-[color:var(--color-text-secondary)]">
+              暂无校验 warning 或风险提示。
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm leading-6 text-[color:var(--color-text-secondary)]">
+          分析完成后会显示本次执行过的检索、SQL 或 Python 步骤，以及校验提示。
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function WorkspacePage() {
   const { t } = useLanguage();
 
@@ -77,6 +444,14 @@ export default function WorkspacePage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [recentArtifacts, setRecentArtifacts] = useState<Artifact[]>([]);
+  const [artifactDetailOpen, setArtifactDetailOpen] = useState(false);
+  const [artifactDetailLoading, setArtifactDetailLoading] = useState(false);
+  const [artifactDetail, setArtifactDetail] = useState<ArtifactDetail | null>(null);
+  const [artifactSearch, setArtifactSearch] = useState("");
+  const [artifactSchemaFilter, setArtifactSchemaFilter] = useState<ArtifactSchemaFilter>("all");
+  const [artifactStatusFilter, setArtifactStatusFilter] = useState<ArtifactStatusFilter>("ACTIVE");
+  const [artifactRefreshing, setArtifactRefreshing] = useState(false);
+  const [artifactActionLoading, setArtifactActionLoading] = useState(false);
 
   const [workspaceInfoOpen, setWorkspaceInfoOpen] = useState(false);
   const [assetDialogOpen, setAssetDialogOpen] = useState(false);
@@ -112,8 +487,49 @@ export default function WorkspacePage() {
   const [activeDocument, setActiveDocument] = useState<DocumentAsset | null>(null);
 
   const datasetMap = useMemo(() => new Map(datasets.map((dataset) => [dataset.id, dataset])), [datasets]);
-  const rows = useMemo(() => analysis?.data ?? [], [analysis]);
+  const rows = useMemo(() => analysis?.analysisReport?.data ?? analysis?.data ?? [], [analysis]);
   const columns = useMemo(() => (rows.length ? Object.keys(rows[0]) : []), [rows]);
+  const analysisSummary = analysis?.analysisReport?.summary ?? analysis?.summary;
+  const generatedCodeOrSql =
+    analysis?.analysisReport?.generatedCodeOrSql ?? analysis?.generatedCodeOrSql ?? analysis?.generatedSql;
+  const evidenceSummary = analysis?.analysisReport?.evidence;
+  const executionLogs = analysis?.analysisReport?.executionLogs ?? analysis?.executionLogs;
+  const validationReport = analysis?.analysisReport?.validationReport ?? analysis?.validationReport;
+  const riskNotices = analysis?.analysisReport?.riskNotices ?? analysis?.riskNotices;
+  const artifactDetailRows = useMemo(
+    () => artifactDetail?.resultPreview ?? parseArtifactRows(artifactDetail?.resultPreviewJson),
+    [artifactDetail]
+  );
+  const artifactDetailColumns = useMemo(
+    () => (artifactDetailRows.length ? Object.keys(artifactDetailRows[0]) : []),
+    [artifactDetailRows]
+  );
+  const filteredArtifacts = useMemo(() => {
+    const term = artifactSearch.trim().toLowerCase();
+
+    return recentArtifacts.filter((artifact) => {
+      const schemaVersion = artifact.artifactSchemaVersion ?? 0;
+      if (artifactSchemaFilter === "phase6" && schemaVersion < 2) return false;
+      if (artifactSchemaFilter === "legacy" && schemaVersion >= 2) return false;
+
+      if (!term) return true;
+      const searchable = [
+        artifact.userQuery,
+        artifact.summary,
+        artifact.generatedCodeOrSql,
+        artifact.chartType,
+        artifact.createdAt,
+        artifact.artifactStatus,
+        getArtifactSchemaLabel(artifact),
+        getArtifactStatusLabel(artifact.artifactStatus),
+      ]
+        .filter(Boolean)
+        .join("\n")
+        .toLowerCase();
+
+      return searchable.includes(term);
+    });
+  }, [artifactSchemaFilter, artifactSearch, recentArtifacts]);
 
   const metrics = useMemo(
     () => [
@@ -162,7 +578,7 @@ export default function WorkspacePage() {
           workplaceApi.getDatasets(nextGroupId),
           workplaceApi.getRelations(nextGroupId),
           documentApi.list(nextGroupId),
-          artifactApi.recent({ groupId: nextGroupId, limit: 8 }),
+          artifactApi.recent({ groupId: nextGroupId, limit: 12, status: artifactStatusFilter }),
         ]);
         setActiveWorkspace(workspaceRes.data ?? null);
         setDatasets(datasetRes.data ?? []);
@@ -179,7 +595,7 @@ export default function WorkspacePage() {
         setLoadingWorkspaceState(false);
       }
     },
-    [t]
+    [artifactStatusFilter, t]
   );
 
   useEffect(() => {
@@ -246,17 +662,89 @@ export default function WorkspacePage() {
     setRelationOpen(true);
   }
 
-  function applyArtifact(artifact: Artifact) {
+  function applyArtifact(artifact: Artifact | ArtifactDetail) {
+    const detail = artifact as ArtifactDetail;
     setQuery(artifact.userQuery ?? "");
     setAnalysis({
       success: true,
       message: undefined,
-      data: artifact.resultPreviewJson ? JSON.parse(artifact.resultPreviewJson) : [],
+      data: detail.resultPreview ?? parseArtifactRows(artifact.resultPreviewJson),
       generatedCodeOrSql: artifact.generatedCodeOrSql,
       summary: artifact.summary,
       recommendedChart: artifact.chartType,
       artifactId: artifact.id,
+      analysisReport: detail.analysisReport ?? undefined,
+      executionLogs: detail.executionLogs,
+      validationReport: detail.validationReport ?? undefined,
+      riskNotices: detail.riskNotices,
     });
+  }
+
+  async function openArtifactDetail(artifact: Artifact) {
+    setArtifactDetailOpen(true);
+    setArtifactDetail({ ...artifact, resultPreview: parseArtifactRows(artifact.resultPreviewJson) });
+    setArtifactDetailLoading(true);
+    try {
+      const res = await artifactApi.detail(artifact.id);
+      setArtifactDetail(res.data ?? null);
+    } catch (error) {
+      toast.error((error as Error).message || "加载分析结果详情失败");
+    } finally {
+      setArtifactDetailLoading(false);
+    }
+  }
+
+  async function refreshArtifacts(showToast = true, status = artifactStatusFilter) {
+    if (!groupId) return;
+
+    setArtifactRefreshing(true);
+    try {
+      const artifactRes = await artifactApi.recent({ groupId, limit: 12, status });
+      setRecentArtifacts(artifactRes.data ?? []);
+      if (showToast) {
+        toast.success("历史结果已刷新");
+      }
+    } catch (error) {
+      toast.error((error as Error).message || "刷新历史结果失败");
+    } finally {
+      setArtifactRefreshing(false);
+    }
+  }
+
+  function changeArtifactStatusFilter(status: ArtifactStatusFilter) {
+    setArtifactStatusFilter(status);
+    void refreshArtifacts(false, status);
+  }
+
+  async function updateArtifactStatus(action: "archive" | "restore" | "delete") {
+    if (!artifactDetail) return;
+    if (action === "delete" && typeof window !== "undefined") {
+      const confirmed = window.confirm("确认软删除这个历史分析结果？删除后可从“删除”筛选中恢复。");
+      if (!confirmed) return;
+    }
+
+    setArtifactActionLoading(true);
+    try {
+      const res =
+        action === "archive"
+          ? await artifactApi.archive(artifactDetail.id)
+          : action === "restore"
+            ? await artifactApi.restore(artifactDetail.id)
+            : await artifactApi.delete(artifactDetail.id);
+      if (res.data) {
+        setArtifactDetail(res.data);
+      }
+      const nextStatus = action === "restore" ? "ACTIVE" : artifactStatusFilter;
+      if (action === "restore") {
+        setArtifactStatusFilter("ACTIVE");
+      }
+      await refreshArtifacts(false, nextStatus);
+      toast.success(action === "archive" ? "历史结果已归档" : action === "restore" ? "历史结果已恢复" : "历史结果已软删除");
+    } catch (error) {
+      toast.error((error as Error).message || "更新历史结果状态失败");
+    } finally {
+      setArtifactActionLoading(false);
+    }
   }
 
   function toggleFocus(datasetId: number) {
@@ -280,7 +768,8 @@ export default function WorkspacePage() {
     try {
       const result = await workplaceApi.analyze(groupId, prompt, focusIds);
       setAnalysis(result);
-      const artifactRes = await artifactApi.recent({ groupId, limit: 8 });
+      setArtifactStatusFilter("ACTIVE");
+      const artifactRes = await artifactApi.recent({ groupId, limit: 12, status: "ACTIVE" });
       setRecentArtifacts(artifactRes.data ?? []);
       if (!result.success) {
         toast.error(result.message || t("analysis_failed"));
@@ -643,9 +1132,17 @@ export default function WorkspacePage() {
             <div className="subtle-panel px-4 py-4">
               <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--color-text-tertiary)]">摘要</div>
               <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[color:var(--color-text-secondary)]">
-                {analysis?.summary || "分析摘要会显示在这里。"}
+                {analysisSummary || "分析摘要会显示在这里。"}
               </div>
             </div>
+
+            <EvidenceSourcesPanel evidence={evidenceSummary} />
+
+            <AnalysisProcessPanel
+              executionLogs={executionLogs}
+              validationReport={validationReport}
+              riskNotices={riskNotices}
+            />
           </CardContent>
         </Card>
 
@@ -655,7 +1152,7 @@ export default function WorkspacePage() {
           </CardHeader>
           <CardContent>
             <pre className="min-h-[320px] overflow-x-auto rounded-[12px] bg-[color:var(--color-background-secondary)] p-4 text-sm leading-6 text-[color:var(--color-text-secondary)]">
-              <code>{analysis?.generatedCodeOrSql || "SQL / Python 将显示在这里。"}</code>
+              <code>{generatedCodeOrSql || "SQL / Python 将显示在这里。"}</code>
             </pre>
           </CardContent>
         </Card>
@@ -665,28 +1162,26 @@ export default function WorkspacePage() {
         <CardHeader>
           <CardTitle>历史结果</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <ArtifactFilterControls
+            search={artifactSearch}
+            schemaFilter={artifactSchemaFilter}
+            statusFilter={artifactStatusFilter}
+            totalCount={recentArtifacts.length}
+            filteredCount={filteredArtifacts.length}
+            refreshing={artifactRefreshing}
+            disabled={!groupId}
+            onSearchChange={setArtifactSearch}
+            onSchemaFilterChange={setArtifactSchemaFilter}
+            onStatusFilterChange={changeArtifactStatusFilter}
+            onRefresh={() => void refreshArtifacts()}
+          />
           {recentArtifacts.length ? (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {recentArtifacts.map((artifact) => (
-                <button
-                  key={artifact.id}
-                  type="button"
-                  onClick={() => applyArtifact(artifact)}
-                  className="subtle-panel text-left px-4 py-4 transition-colors hover:border-[color:rgba(242,201,76,0.28)] hover:bg-[color:#202020]"
-                >
-                  <div className="line-clamp-2 text-sm font-medium text-[color:var(--color-text-primary)]">
-                    {artifact.userQuery || "分析记录"}
-                  </div>
-                  <div className="mt-3 line-clamp-4 text-sm leading-6 text-[color:var(--color-text-secondary)]">
-                    {artifact.summary || "无摘要"}
-                  </div>
-                  <div className="mt-4 text-xs text-[color:var(--color-text-tertiary)]">
-                    {artifact.createdAt ? new Date(artifact.createdAt).toLocaleString() : ""}
-                  </div>
-                </button>
-              ))}
-            </div>
+            <ArtifactCardGrid
+              artifacts={filteredArtifacts}
+              emptyText="没有匹配的历史结果。"
+              onOpenDetail={(artifact) => void openArtifactDetail(artifact)}
+            />
           ) : (
             <div className="subtle-panel px-4 py-4 text-sm text-[color:var(--color-text-secondary)]">还没有历史结果。</div>
           )}
@@ -922,31 +1417,179 @@ export default function WorkspacePage() {
           ) : null}
 
           {assetView === "artifacts" ? (
-            recentArtifacts.length ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                {recentArtifacts.map((artifact) => (
-                  <button
-                    key={artifact.id}
-                    type="button"
-                    onClick={() => applyArtifact(artifact)}
-                    className="subtle-panel text-left px-4 py-4 transition-colors hover:border-[color:rgba(242,201,76,0.28)] hover:bg-[color:#202020]"
-                  >
-                    <div className="line-clamp-2 text-sm font-medium text-[color:var(--color-text-primary)]">
-                      {artifact.userQuery || t("artifact_query")}
-                    </div>
-                    <div className="mt-3 line-clamp-4 text-sm leading-6 text-[color:var(--color-text-secondary)]">
-                      {artifact.summary || "无摘要"}
-                    </div>
-                    <div className="mt-4 text-xs text-[color:var(--color-text-tertiary)]">
-                      {artifact.createdAt ? new Date(artifact.createdAt).toLocaleString() : ""}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="subtle-panel px-4 py-4 text-sm text-[color:var(--color-text-secondary)]">{t("no_recent_artifacts")}</div>
-            )
+            <div className="space-y-4">
+              <ArtifactFilterControls
+                search={artifactSearch}
+                schemaFilter={artifactSchemaFilter}
+                statusFilter={artifactStatusFilter}
+                totalCount={recentArtifacts.length}
+                filteredCount={filteredArtifacts.length}
+                refreshing={artifactRefreshing}
+                disabled={!groupId}
+                onSearchChange={setArtifactSearch}
+                onSchemaFilterChange={setArtifactSchemaFilter}
+                onStatusFilterChange={changeArtifactStatusFilter}
+                onRefresh={() => void refreshArtifacts()}
+              />
+              {recentArtifacts.length ? (
+                <ArtifactCardGrid
+                  artifacts={filteredArtifacts}
+                  emptyText="没有匹配的历史结果。"
+                  gridClassName="grid gap-3 md:grid-cols-2"
+                  onOpenDetail={(artifact) => void openArtifactDetail(artifact)}
+                />
+              ) : (
+                <div className="subtle-panel px-4 py-4 text-sm text-[color:var(--color-text-secondary)]">
+                  {t("no_recent_artifacts")}
+                </div>
+              )}
+            </div>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={artifactDetailOpen}
+        onOpenChange={(open) => {
+          setArtifactDetailOpen(open);
+          if (!open) {
+            setArtifactDetail(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-6xl">
+          <DialogHeader>
+            <DialogTitle>分析结果详情</DialogTitle>
+            <DialogDescription>
+              {artifactDetail?.createdAt ? new Date(artifactDetail.createdAt).toLocaleString() : "历史分析结果"}
+            </DialogDescription>
+          </DialogHeader>
+
+          {artifactDetailLoading && !artifactDetail ? (
+            <div className="space-y-3">
+              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-40 w-full" />
+              <Skeleton className="h-40 w-full" />
+            </div>
+          ) : artifactDetail ? (
+            <div className="max-h-[72vh] space-y-4 overflow-y-auto pr-1">
+              <div className="subtle-panel px-4 py-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--color-text-tertiary)]">
+                      查询
+                    </div>
+                    <div className="mt-2 break-words text-sm font-medium text-[color:var(--color-text-primary)]">
+                      {artifactDetail.userQuery || "分析记录"}
+                    </div>
+                  </div>
+                  <div className="rounded-[8px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-2 py-1 text-xs text-[color:var(--color-text-tertiary)]">
+                    {artifactDetail.reportAvailable ? "report available" : "legacy artifact"} /{" "}
+                    {getArtifactStatusLabel(artifactDetail.artifactStatus)}
+                  </div>
+                </div>
+                <div className="mt-4 whitespace-pre-wrap text-sm leading-7 text-[color:var(--color-text-secondary)]">
+                  {artifactDetail.analysisReport?.summary ?? artifactDetail.summary ?? "无摘要"}
+                </div>
+              </div>
+
+              {artifactDetailRows.length ? (
+                <div className="overflow-hidden rounded-[12px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-secondary)]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        {artifactDetailColumns.map((column) => (
+                          <TableHead key={column}>{column}</TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {artifactDetailRows.slice(0, 20).map((row, index) => (
+                        <TableRow key={index}>
+                          {artifactDetailColumns.map((column) => (
+                            <TableCell key={column}>{String(row[column] ?? "")}</TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="subtle-panel px-4 py-4 text-sm text-[color:var(--color-text-secondary)]">
+                  这个历史结果没有保存结果预览。
+                </div>
+              )}
+
+              <EvidenceSourcesPanel evidence={artifactDetail.evidence ?? artifactDetail.analysisReport?.evidence} />
+
+              <AnalysisProcessPanel
+                executionLogs={artifactDetail.executionLogs ?? artifactDetail.analysisReport?.executionLogs}
+                validationReport={artifactDetail.validationReport ?? artifactDetail.analysisReport?.validationReport}
+                riskNotices={artifactDetail.riskNotices ?? artifactDetail.analysisReport?.riskNotices}
+              />
+
+              <div className="subtle-panel px-4 py-4">
+                <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--color-text-tertiary)]">
+                  生成代码
+                </div>
+                <pre className="mt-3 max-h-[260px] overflow-x-auto rounded-[12px] bg-[color:var(--color-background-secondary)] p-4 text-sm leading-6 text-[color:var(--color-text-secondary)]">
+                  <code>
+                    {artifactDetail.analysisReport?.generatedCodeOrSql ??
+                      artifactDetail.generatedCodeOrSql ??
+                      "无 SQL / Python 代码。"}
+                  </code>
+                </pre>
+              </div>
+            </div>
+          ) : (
+            <div className="subtle-panel px-4 py-4 text-sm text-[color:var(--color-text-secondary)]">
+              未能加载分析结果详情。
+            </div>
+          )}
+
+          <DialogFooter>
+            {artifactDetail?.artifactStatus !== "ARCHIVED" && artifactDetail?.artifactStatus !== "DELETED" ? (
+              <Button
+                variant="outline"
+                onClick={() => void updateArtifactStatus("archive")}
+                disabled={!artifactDetail || artifactActionLoading}
+              >
+                {artifactActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+                归档
+              </Button>
+            ) : null}
+            {artifactDetail?.artifactStatus === "ARCHIVED" || artifactDetail?.artifactStatus === "DELETED" ? (
+              <Button
+                variant="outline"
+                onClick={() => void updateArtifactStatus("restore")}
+                disabled={!artifactDetail || artifactActionLoading}
+              >
+                {artifactActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                恢复
+              </Button>
+            ) : null}
+            {artifactDetail?.artifactStatus !== "DELETED" ? (
+              <Button
+                variant="destructive"
+                onClick={() => void updateArtifactStatus("delete")}
+                disabled={!artifactDetail || artifactActionLoading}
+              >
+                {artifactActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                软删除
+              </Button>
+            ) : null}
+            <Button
+              variant="outline"
+              onClick={() => artifactDetail && applyArtifact(artifactDetail)}
+              disabled={!artifactDetail}
+            >
+              <FileText className="h-4 w-4" />
+              加载到本次结果
+            </Button>
+            <Button variant="secondary" onClick={() => setArtifactDetailOpen(false)}>
+              {t("close")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

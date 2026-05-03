@@ -150,9 +150,20 @@ public class DuckDBRepository {
                             summary VARCHAR,
                             chart_type VARCHAR,
                             result_preview_json VARCHAR,
+                            artifact_schema_version INTEGER,
+                            analysis_report_json VARCHAR,
+                            evidence_summary_json VARCHAR,
+                            execution_logs_json VARCHAR,
+                            validation_report_json VARCHAR,
+                            risk_notices_json VARCHAR,
+                            artifact_status VARCHAR DEFAULT 'ACTIVE',
+                            archived_at TIMESTAMP,
+                            deleted_at TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         )
                     """);
+            ensureAnalysisArtifactPhase6Columns(connection, stmt);
             stmt.execute("""
                         CREATE TABLE IF NOT EXISTS meta_documents (
                             id INTEGER PRIMARY KEY,
@@ -246,6 +257,43 @@ public class DuckDBRepository {
             if (!rs.next()) {
                 stmt.execute("ALTER TABLE meta_documents ADD COLUMN chunk_count INTEGER");
                 log.info("Schema migration applied: meta_documents.chunk_count added");
+            }
+        }
+    }
+
+    private void ensureAnalysisArtifactPhase6Columns(Connection connection, Statement stmt) throws SQLException {
+        ensureColumn(connection, stmt, "analysis_artifacts", "artifact_schema_version", "INTEGER");
+        ensureColumn(connection, stmt, "analysis_artifacts", "analysis_report_json", "VARCHAR");
+        ensureColumn(connection, stmt, "analysis_artifacts", "evidence_summary_json", "VARCHAR");
+        ensureColumn(connection, stmt, "analysis_artifacts", "execution_logs_json", "VARCHAR");
+        ensureColumn(connection, stmt, "analysis_artifacts", "validation_report_json", "VARCHAR");
+        ensureColumn(connection, stmt, "analysis_artifacts", "risk_notices_json", "VARCHAR");
+        ensureColumn(connection, stmt, "analysis_artifacts", "artifact_status", "VARCHAR DEFAULT 'ACTIVE'");
+        ensureColumn(connection, stmt, "analysis_artifacts", "archived_at", "TIMESTAMP");
+        ensureColumn(connection, stmt, "analysis_artifacts", "deleted_at", "TIMESTAMP");
+        ensureColumn(connection, stmt, "analysis_artifacts", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+    }
+
+    private void ensureColumn(
+            Connection connection,
+            Statement stmt,
+            String tableName,
+            String columnName,
+            String columnType) throws SQLException {
+        String checkSql = """
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_name = ? AND column_name = ?
+                LIMIT 1
+                """;
+        try (PreparedStatement ps = connection.prepareStatement(checkSql)) {
+            ps.setString(1, tableName);
+            ps.setString(2, columnName);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    stmt.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnType);
+                    log.info("Schema migration applied: {}.{} added", tableName, columnName);
+                }
             }
         }
     }
@@ -710,9 +758,12 @@ public class DuckDBRepository {
         String sql = """
                 INSERT INTO analysis_artifacts (
                     id, mode, session_id, group_id, dataset_id, user_query,
-                    generated_code_or_sql, summary, chart_type, result_preview_json, created_at
+                    generated_code_or_sql, summary, chart_type, result_preview_json,
+                    artifact_schema_version, analysis_report_json, evidence_summary_json,
+                    execution_logs_json, validation_report_json, risk_notices_json,
+                    artifact_status, archived_at, deleted_at, updated_at, created_at
                 )
-                VALUES (nextval('seq_analysis_artifact'), ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                VALUES (nextval('seq_analysis_artifact'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 RETURNING id
                 """;
         try (Connection connection = dataSource.getConnection();
@@ -738,9 +789,85 @@ public class DuckDBRepository {
             stmt.setString(7, artifact.getSummary());
             stmt.setString(8, artifact.getChartType());
             stmt.setString(9, artifact.getResultPreviewJson());
+            if (artifact.getArtifactSchemaVersion() != null) {
+                stmt.setInt(10, artifact.getArtifactSchemaVersion());
+            } else {
+                stmt.setNull(10, Types.INTEGER);
+            }
+            stmt.setString(11, artifact.getAnalysisReportJson());
+            stmt.setString(12, artifact.getEvidenceSummaryJson());
+            stmt.setString(13, artifact.getExecutionLogsJson());
+            stmt.setString(14, artifact.getValidationReportJson());
+            stmt.setString(15, artifact.getRiskNoticesJson());
+            stmt.setString(16, defaultArtifactStatus(artifact.getArtifactStatus()));
+            if (artifact.getArchivedAt() != null) {
+                stmt.setTimestamp(17, Timestamp.valueOf(artifact.getArchivedAt()));
+            } else {
+                stmt.setNull(17, Types.TIMESTAMP);
+            }
+            if (artifact.getDeletedAt() != null) {
+                stmt.setTimestamp(18, Timestamp.valueOf(artifact.getDeletedAt()));
+            } else {
+                stmt.setNull(18, Types.TIMESTAMP);
+            }
+            if (artifact.getUpdatedAt() != null) {
+                stmt.setTimestamp(19, Timestamp.valueOf(artifact.getUpdatedAt()));
+            } else {
+                stmt.setTimestamp(19, Timestamp.valueOf(java.time.LocalDateTime.now()));
+            }
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return rs.getLong(1);
+                }
+            }
+        }
+        return null;
+    }
+
+    public boolean updateAnalysisArtifactStatus(Long id, String status) throws SQLException {
+        String normalizedStatus = defaultArtifactStatus(status);
+        String sql = switch (normalizedStatus) {
+            case "ARCHIVED" -> """
+                    UPDATE analysis_artifacts
+                    SET artifact_status = 'ARCHIVED',
+                        archived_at = CURRENT_TIMESTAMP,
+                        deleted_at = NULL,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """;
+            case "DELETED" -> """
+                    UPDATE analysis_artifacts
+                    SET artifact_status = 'DELETED',
+                        deleted_at = CURRENT_TIMESTAMP,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """;
+            case "ACTIVE" -> """
+                    UPDATE analysis_artifacts
+                    SET artifact_status = 'ACTIVE',
+                        archived_at = NULL,
+                        deleted_at = NULL,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """;
+            default -> throw new IllegalArgumentException("Unsupported artifact status: " + status);
+        };
+
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, id);
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
+    public AnalysisArtifact findAnalysisArtifactById(Long id) throws SQLException {
+        String sql = "SELECT * FROM analysis_artifacts WHERE id = ?";
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapAnalysisArtifact(rs);
                 }
             }
         }
@@ -895,18 +1022,24 @@ public class DuckDBRepository {
     }
 
     public List<AnalysisArtifact> findRecentArtifactsBySessionId(Long sessionId, int limit) throws SQLException {
+        return findRecentArtifactsBySessionId(sessionId, limit, "ACTIVE");
+    }
+
+    public List<AnalysisArtifact> findRecentArtifactsBySessionId(Long sessionId, int limit, String status) throws SQLException {
         List<AnalysisArtifact> artifacts = new ArrayList<>();
         String sql = """
                 SELECT *
                 FROM analysis_artifacts
                 WHERE session_id = ?
+                  AND COALESCE(artifact_status, 'ACTIVE') = ?
                 ORDER BY created_at DESC, id DESC
                 LIMIT ?
                 """;
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setLong(1, sessionId);
-            stmt.setInt(2, limit);
+            stmt.setString(2, defaultArtifactStatus(status));
+            stmt.setInt(3, limit);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     artifacts.add(mapAnalysisArtifact(rs));
@@ -917,18 +1050,24 @@ public class DuckDBRepository {
     }
 
     public List<AnalysisArtifact> findRecentArtifactsByGroupId(Long groupId, int limit) throws SQLException {
+        return findRecentArtifactsByGroupId(groupId, limit, "ACTIVE");
+    }
+
+    public List<AnalysisArtifact> findRecentArtifactsByGroupId(Long groupId, int limit, String status) throws SQLException {
         List<AnalysisArtifact> artifacts = new ArrayList<>();
         String sql = """
                 SELECT *
                 FROM analysis_artifacts
                 WHERE group_id = ?
+                  AND COALESCE(artifact_status, 'ACTIVE') = ?
                 ORDER BY created_at DESC, id DESC
                 LIMIT ?
                 """;
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setLong(1, groupId);
-            stmt.setInt(2, limit);
+            stmt.setString(2, defaultArtifactStatus(status));
+            stmt.setInt(3, limit);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     artifacts.add(mapAnalysisArtifact(rs));
@@ -1212,11 +1351,41 @@ public class DuckDBRepository {
         artifact.setSummary(rs.getString("summary"));
         artifact.setChartType(rs.getString("chart_type"));
         artifact.setResultPreviewJson(rs.getString("result_preview_json"));
+        artifact.setArtifactSchemaVersion(getNullableInteger(rs, "artifact_schema_version"));
+        artifact.setAnalysisReportJson(rs.getString("analysis_report_json"));
+        artifact.setEvidenceSummaryJson(rs.getString("evidence_summary_json"));
+        artifact.setExecutionLogsJson(rs.getString("execution_logs_json"));
+        artifact.setValidationReportJson(rs.getString("validation_report_json"));
+        artifact.setRiskNoticesJson(rs.getString("risk_notices_json"));
+        artifact.setArtifactStatus(defaultArtifactStatus(rs.getString("artifact_status")));
+        Timestamp archivedAt = rs.getTimestamp("archived_at");
+        if (archivedAt != null) {
+            artifact.setArchivedAt(archivedAt.toLocalDateTime());
+        }
+        Timestamp deletedAt = rs.getTimestamp("deleted_at");
+        if (deletedAt != null) {
+            artifact.setDeletedAt(deletedAt.toLocalDateTime());
+        }
+        Timestamp updatedAt = rs.getTimestamp("updated_at");
+        if (updatedAt != null) {
+            artifact.setUpdatedAt(updatedAt.toLocalDateTime());
+        }
         Timestamp createdAt = rs.getTimestamp("created_at");
         if (createdAt != null) {
             artifact.setCreatedAt(createdAt.toLocalDateTime());
         }
         return artifact;
+    }
+
+    private String defaultArtifactStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return "ACTIVE";
+        }
+        String normalizedStatus = status.trim().toUpperCase();
+        return switch (normalizedStatus) {
+            case "ACTIVE", "ARCHIVED", "DELETED" -> normalizedStatus;
+            default -> "ACTIVE";
+        };
     }
 
     private Long getNullableLong(ResultSet rs, String column) throws SQLException {
@@ -1228,6 +1397,17 @@ public class DuckDBRepository {
             return number.longValue();
         }
         return Long.parseLong(value.toString());
+    }
+
+    private Integer getNullableInteger(ResultSet rs, String column) throws SQLException {
+        Object value = rs.getObject(column);
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        return Integer.parseInt(value.toString());
     }
 
     private Double getNullableDouble(ResultSet rs, String column) throws SQLException {

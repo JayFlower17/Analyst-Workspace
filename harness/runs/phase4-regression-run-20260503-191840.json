@@ -1,0 +1,592 @@
+{
+  "generated_at": "2026-05-03T19:18:40",
+  "category": "all",
+  "suite": "phase4-regression",
+  "suite_description": "Minimum Phase 4 regression suite covering routing, planning, execution logs, document retrieval, and document-only flow.",
+  "total": 5,
+  "passed": 5,
+  "failed": 0,
+  "request_timeout_seconds": 90,
+  "selected_tags": [
+    "phase4-regression"
+  ],
+  "results": [
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "Based on the join of traffic and orders tables by product_id and date, summarized by traffic channel: The **ads** channel leads with the highest paid revenue of ¥969,918.75 and 1,000 paid orders, followed by **social** (¥817,103.75, 955 orders), **referral** (¥783,216.25, 1,000 orders), and **organic** (¥632,519.75, 955 orders). Total page views are similar across all channels (~700K-701K), and unique visitors range from ~413K to ~421K. Conversion rates are very close across channels at 0.23%-0.24%, indicating consistent traffic-to-order efficiency regardless of channel.",
+        "rows": 4,
+        "artifactId": 146,
+        "generatedSqlPresent": true,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "SKIP",
+          "documentTopK": 0,
+          "documentCharBudget": 0,
+          "documentChunkCount": 0,
+          "structuredPromptChars": 679,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 307,
+          "documentPromptChars": 105
+        },
+        "routeDecision": {
+          "route": "STRUCTURED_QUERY",
+          "reason": "The query can be handled as a structured workspace analysis.",
+          "requiresWorkspaceContext": true,
+          "requiresDocumentContext": false,
+          "allowsSqlGeneration": true
+        },
+        "analysisPlan": {
+          "route": "STRUCTURED_QUERY",
+          "objective": "Answer the workspace question using structured table context and SQL.",
+          "stepTypes": [
+            "ROUTE_DECISION",
+            "BUILD_CONTEXT",
+            "GENERATE_SQL",
+            "EXECUTE_SQL",
+            "SUMMARIZE_RESULT"
+          ],
+          "stepCount": 5
+        },
+        "executionLogs": {
+          "toolTypes": [
+            "SQL_EXECUTION"
+          ],
+          "stepTypes": [
+            "EXECUTE_SQL"
+          ],
+          "successes": [
+            true
+          ],
+          "durationsMs": [
+            42
+          ],
+          "count": 1
+        },
+        "validationReport": {
+          "passed": true,
+          "findings": []
+        },
+        "riskNotices": [],
+        "analysisReport": {
+          "rowCount": 4,
+          "recommendedChart": "BAR",
+          "generatedCodeOrSqlPresent": true,
+          "evidence": {
+            "datasetCount": 2,
+            "documentChunkCount": 0,
+            "documentNames": [],
+            "documentStrategy": "SKIP"
+          },
+          "riskNoticeCount": 0,
+          "executionLogCount": 1
+        }
+      },
+      "duration_seconds": 16.516,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\workspace\\traffic_orders_join_signal.json",
+      "tags": [
+        "workspace",
+        "multi-table",
+        "join",
+        "sql-only",
+        "execution-log",
+        "phase4-regression"
+      ],
+      "description": "Join traffic and orders into a stable channel-level SQL summary.",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_traffic.csv"
+        ],
+        "query": "Using SQL only, join the traffic and orders tables by product_id and date, then summarize by traffic channel. Return channel, total page views, total unique visitors, paid order count, paid revenue, and a concise conversion-rate summary."
+      },
+      "setup_documents_requested": 0,
+      "setup_resources_created": [],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    },
+    {
+      "case_id": "hybrid_workspace_orders_products_merchandising_priority",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The paid revenue by product category ranks as follows: 手机 (¥698,031.25), 美妆 (¥633,245.25), 家电 (¥612,073.50), 食品 (¥443,939.75), 服饰 (¥415,348.00), 电脑 (¥400,120.75). Per the Merchandising Priority Note, the 手机 (Mobile) category is the designated strategic launch focus for this workspace. Notably, 手机 also achieved the highest actual paid revenue among all categories, reinforcing its priority status.",
+        "rows": 6,
+        "artifactId": 147,
+        "generatedSqlPresent": true,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "HEAVY",
+          "documentTopK": 4,
+          "documentCharBudget": 2600,
+          "documentChunkCount": 2,
+          "structuredPromptChars": 651,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 308,
+          "documentPromptChars": 1040
+        },
+        "routeDecision": {
+          "route": "HYBRID_ANALYSIS",
+          "reason": "The query references document, policy, rule, priority, or explanatory context.",
+          "requiresWorkspaceContext": true,
+          "requiresDocumentContext": true,
+          "allowsSqlGeneration": true
+        },
+        "analysisPlan": {
+          "route": "HYBRID_ANALYSIS",
+          "objective": "Answer the workspace question by combining table analysis with retrieved document context.",
+          "stepTypes": [
+            "ROUTE_DECISION",
+            "BUILD_CONTEXT",
+            "RETRIEVE_DOCUMENTS",
+            "GENERATE_SQL",
+            "EXECUTE_SQL",
+            "SUMMARIZE_RESULT"
+          ],
+          "stepCount": 6
+        },
+        "executionLogs": {
+          "toolTypes": [
+            "DOCUMENT_RETRIEVAL",
+            "SQL_EXECUTION"
+          ],
+          "stepTypes": [
+            "RETRIEVE_DOCUMENTS",
+            "EXECUTE_SQL"
+          ],
+          "successes": [
+            true,
+            true
+          ],
+          "durationsMs": [
+            13,
+            6
+          ],
+          "count": 2
+        },
+        "validationReport": {
+          "passed": true,
+          "findings": []
+        },
+        "riskNotices": [],
+        "analysisReport": {
+          "rowCount": 6,
+          "recommendedChart": "BAR",
+          "generatedCodeOrSqlPresent": true,
+          "evidence": {
+            "datasetCount": 2,
+            "documentChunkCount": 2,
+            "documentNames": [
+              "Merchandising Priority Note",
+              "Workspace Analysis Note"
+            ],
+            "documentStrategy": "HEAVY"
+          },
+          "riskNoticeCount": 0,
+          "executionLogCount": 2
+        }
+      },
+      "duration_seconds": 9.64,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\hybrid\\workspace_orders_products_merchandising_priority.json",
+      "tags": [
+        "hybrid",
+        "multi-table",
+        "document-retrieval",
+        "policy-note",
+        "phase4-regression"
+      ],
+      "description": "Join orders and products, then incorporate a merchandising note about the strategic category focus.",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_products.csv"
+        ],
+        "query": "Join the orders and products tables, summarize paid revenue by product category, and mention which category is the strategic launch focus according to the merchandising note."
+      },
+      "setup_documents_requested": 1,
+      "setup_resources_created": [
+        {
+          "type": "document",
+          "id": 80
+        }
+      ],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    },
+    {
+      "case_id": "hybrid_workspace_orders_products_revenue_policy",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "根据收入确认政策，仅将订单状态为'PAID'的订单计入已确认收入，所有'REFUNDED'（已退款）订单已被排除。分析结果显示，按产品类别排名的已确认收入如下：\n\n1. **手机** — ¥698,031.25（670笔已支付订单，2,010件售出）\n2. **美妆** — ¥633,245.25（660笔已支付订单，1,980件售出）\n3. **家电** — ¥612,073.50（670笔已支付订单，2,010件售出）\n4. **食品** — ¥443,939.75（640笔已支付订单，1,280件售出）\n5. **服饰** — ¥415,348.00（630笔已支付订单，1,260件售出）\n6. **电脑** — ¥400,120.75（640笔已支付订单，1,280件售出）\n\n**退款处理说明：** 数据中共有1,220笔已退款订单（总金额约¥985,757.50），按照收入确认政策，这些订单已全部从收入汇总中排除。最终报告的收入仅反映实际已支付的订单金额。",
+        "rows": 6,
+        "artifactId": 148,
+        "generatedSqlPresent": true,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "HEAVY",
+          "documentTopK": 4,
+          "documentCharBudget": 2600,
+          "documentChunkCount": 2,
+          "structuredPromptChars": 651,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 308,
+          "documentPromptChars": 1161
+        },
+        "routeDecision": {
+          "route": "HYBRID_ANALYSIS",
+          "reason": "The query references document, policy, rule, priority, or explanatory context.",
+          "requiresWorkspaceContext": true,
+          "requiresDocumentContext": true,
+          "allowsSqlGeneration": true
+        },
+        "analysisPlan": {
+          "route": "HYBRID_ANALYSIS",
+          "objective": "Answer the workspace question by combining table analysis with retrieved document context.",
+          "stepTypes": [
+            "ROUTE_DECISION",
+            "BUILD_CONTEXT",
+            "RETRIEVE_DOCUMENTS",
+            "GENERATE_SQL",
+            "EXECUTE_SQL",
+            "SUMMARIZE_RESULT"
+          ],
+          "stepCount": 6
+        },
+        "executionLogs": {
+          "toolTypes": [
+            "DOCUMENT_RETRIEVAL",
+            "SQL_EXECUTION"
+          ],
+          "stepTypes": [
+            "RETRIEVE_DOCUMENTS",
+            "EXECUTE_SQL"
+          ],
+          "successes": [
+            true,
+            true
+          ],
+          "durationsMs": [
+            9,
+            12
+          ],
+          "count": 2
+        },
+        "validationReport": {
+          "passed": true,
+          "findings": []
+        },
+        "riskNotices": [],
+        "analysisReport": {
+          "rowCount": 6,
+          "recommendedChart": "BAR",
+          "generatedCodeOrSqlPresent": true,
+          "evidence": {
+            "datasetCount": 2,
+            "documentChunkCount": 2,
+            "documentNames": [
+              "Revenue Recognition Policy",
+              "Workspace Analysis Note"
+            ],
+            "documentStrategy": "HEAVY"
+          },
+          "riskNoticeCount": 0,
+          "executionLogCount": 2
+        }
+      },
+      "duration_seconds": 12.766,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\hybrid\\workspace_orders_products_revenue_policy.json",
+      "tags": [
+        "hybrid",
+        "multi-table",
+        "document-retrieval",
+        "policy",
+        "phase4-regression"
+      ],
+      "description": "Join orders and products, then apply the revenue recognition policy from a document to category revenue.",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_products.csv"
+        ],
+        "query": "Join the orders and products tables, summarize recognized commerce revenue by product category according to the revenue recognition policy, and explain how refunded orders are treated."
+      },
+      "setup_documents_requested": 1,
+      "setup_resources_created": [
+        {
+          "type": "document",
+          "id": 81
+        }
+      ],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    },
+    {
+      "case_id": "hybrid_workspace_orders_users_note_priority",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "The order counts are evenly distributed across all three VIP segments: L1, L2, and L3 each have 1,710 orders from 40 users each. According to the workspace analysis note, VIP/premium-like segments should be treated as the highest-priority customer cohort. Therefore, the **L3** segment (the highest VIP level) should be highlighted first, as it represents the most premium customer tier. However, from a purely quantitative standpoint, all three segments show identical order volume, indicating balanced engagement across VIP levels.",
+        "rows": 3,
+        "artifactId": 149,
+        "generatedSqlPresent": true,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "HEAVY",
+          "documentTopK": 4,
+          "documentCharBudget": 2600,
+          "documentChunkCount": 2,
+          "structuredPromptChars": 674,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 305,
+          "documentPromptChars": 1055
+        },
+        "routeDecision": {
+          "route": "HYBRID_ANALYSIS",
+          "reason": "The query references document, policy, rule, priority, or explanatory context.",
+          "requiresWorkspaceContext": true,
+          "requiresDocumentContext": true,
+          "allowsSqlGeneration": true
+        },
+        "analysisPlan": {
+          "route": "HYBRID_ANALYSIS",
+          "objective": "Answer the workspace question by combining table analysis with retrieved document context.",
+          "stepTypes": [
+            "ROUTE_DECISION",
+            "BUILD_CONTEXT",
+            "RETRIEVE_DOCUMENTS",
+            "GENERATE_SQL",
+            "EXECUTE_SQL",
+            "SUMMARIZE_RESULT"
+          ],
+          "stepCount": 6
+        },
+        "executionLogs": {
+          "toolTypes": [
+            "DOCUMENT_RETRIEVAL",
+            "SQL_EXECUTION"
+          ],
+          "stepTypes": [
+            "RETRIEVE_DOCUMENTS",
+            "EXECUTE_SQL"
+          ],
+          "successes": [
+            true,
+            true
+          ],
+          "durationsMs": [
+            7,
+            6
+          ],
+          "count": 2
+        },
+        "validationReport": {
+          "passed": true,
+          "findings": []
+        },
+        "riskNotices": [],
+        "analysisReport": {
+          "rowCount": 3,
+          "recommendedChart": "BAR",
+          "generatedCodeOrSqlPresent": true,
+          "evidence": {
+            "datasetCount": 2,
+            "documentChunkCount": 2,
+            "documentNames": [
+              "Workspace Analysis Note"
+            ],
+            "documentStrategy": "HEAVY"
+          },
+          "riskNoticeCount": 0,
+          "executionLogCount": 2
+        }
+      },
+      "duration_seconds": 11.172,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\hybrid\\workspace_orders_users_note_priority.json",
+      "tags": [
+        "hybrid",
+        "multi-table",
+        "document-retrieval",
+        "workspace-note",
+        "phase4-regression"
+      ],
+      "description": "Join orders and users, then incorporate a workspace note about which segment to highlight first.",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_users.csv"
+        ],
+        "query": "Join the orders and users tables, summarize order counts by user segment, and mention which segment should be highlighted first according to the workspace note."
+      },
+      "setup_documents_requested": 1,
+      "setup_resources_created": [
+        {
+          "type": "document",
+          "id": 82
+        }
+      ],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    },
+    {
+      "case_id": "hybrid_workspace_revenue_policy_document_only",
+      "category": "hybrid",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "Based on the retrieved workspace document context:\n- Revenue Recognition Policy: # Revenue Recognition Policy\n\nWhen reporting recognized commerce revenue for this workspace:\n\n- Recognized revenue must include only orders where `order_status` is `PAID`.\n- Orders where `order_status` is `REFUNDED` must be excluded from recognized revenue.\n- If the analysis compares product categories, rank categories by recognized paid revenue rather than gross order amount.\n- The final summary should explicitly mention that refunded orders were excluded by policy.\nNo SQL was generated because the request was classified as document-only.",
+        "rows": 0,
+        "artifactId": 150,
+        "generatedSqlPresent": false,
+        "contextSummary": {
+          "groupId": 1,
+          "structuredSource": "WORKSPACE_SCHEMA",
+          "documentSource": "DOCUMENT_RETRIEVAL",
+          "semanticSource": "WORKSPACE_METADATA",
+          "datasetCount": 2,
+          "relationCount": 0,
+          "hasSemanticContext": true,
+          "documentStrategy": "HEAVY",
+          "documentTopK": 4,
+          "documentCharBudget": 2600,
+          "documentChunkCount": 2,
+          "structuredPromptChars": 651,
+          "relationPromptChars": 98,
+          "semanticPromptChars": 308,
+          "documentPromptChars": 1161
+        },
+        "routeDecision": {
+          "route": "DOCUMENT_EXPLANATION",
+          "reason": "The query explicitly asks for document-only or no-SQL answering.",
+          "requiresWorkspaceContext": true,
+          "requiresDocumentContext": true,
+          "allowsSqlGeneration": false
+        },
+        "analysisPlan": {
+          "route": "DOCUMENT_EXPLANATION",
+          "objective": "Answer directly from retrieved document context without generating SQL.",
+          "stepTypes": [
+            "ROUTE_DECISION",
+            "BUILD_CONTEXT",
+            "RETRIEVE_DOCUMENTS",
+            "ANSWER_FROM_DOCUMENTS",
+            "SUMMARIZE_RESULT"
+          ],
+          "stepCount": 5
+        },
+        "executionLogs": {
+          "toolTypes": [
+            "DOCUMENT_RETRIEVAL"
+          ],
+          "stepTypes": [
+            "RETRIEVE_DOCUMENTS"
+          ],
+          "successes": [
+            true
+          ],
+          "durationsMs": [
+            4
+          ],
+          "count": 1
+        },
+        "validationReport": {
+          "passed": true,
+          "findings": []
+        },
+        "riskNotices": [],
+        "analysisReport": {
+          "rowCount": 0,
+          "recommendedChart": "TABLE",
+          "generatedCodeOrSqlPresent": false,
+          "evidence": {
+            "datasetCount": 2,
+            "documentChunkCount": 2,
+            "documentNames": [
+              "Revenue Recognition Policy",
+              "Workspace Analysis Note"
+            ],
+            "documentStrategy": "HEAVY"
+          },
+          "riskNoticeCount": 0,
+          "executionLogCount": 1
+        }
+      },
+      "duration_seconds": 0.156,
+      "case_path": "F:\\data-analysis-platform\\harness\\benchmarks\\hybrid\\workspace_revenue_policy_document_only.json",
+      "tags": [
+        "hybrid",
+        "document-only",
+        "document-retrieval",
+        "policy",
+        "phase4-regression"
+      ],
+      "description": "Answer a revenue policy question from workspace documents without generating SQL.",
+      "request_excerpt": {
+        "groupId": 1,
+        "focusDatasetNames": [
+          "stage2_orders.csv",
+          "stage2_products.csv"
+        ],
+        "query": "According to the revenue recognition policy, how are REFUNDED orders treated? Answer from the document only; no SQL is needed."
+      },
+      "setup_documents_requested": 1,
+      "setup_resources_created": [
+        {
+          "type": "document",
+          "id": 83
+        }
+      ],
+      "cleanup_succeeded": true,
+      "cleanup_errors": []
+    }
+  ]
+}

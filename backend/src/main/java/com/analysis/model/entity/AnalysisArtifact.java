@@ -16,6 +16,15 @@ public class AnalysisArtifact {
     private String summary;
     private String chartType;
     private String resultPreviewJson;
+    private Integer artifactSchemaVersion;
+    private String analysisReportJson;
+    private String evidenceSummaryJson;
+    private String executionLogsJson;
+    private String validationReportJson;
+    private String riskNoticesJson;
+    private String artifactStatus;
+    private LocalDateTime archivedAt;
+    private LocalDateTime deletedAt;
+    private LocalDateTime updatedAt;
     private LocalDateTime createdAt;
 }
-

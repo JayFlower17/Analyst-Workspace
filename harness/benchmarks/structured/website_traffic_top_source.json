@@ -2,6 +2,7 @@
   "id": "structured_website_traffic_top_source",
   "category": "structured",
   "description": "Find the strongest traffic source.",
+  "tags": ["structured", "single-table", "ranking", "smoke"],
   "request": {
     "datasetId": 3,
     "query": "Show the top traffic sources ranked by visits."

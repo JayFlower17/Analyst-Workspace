@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-05-01T13:32:39",
+  "category": "workspace",
+  "total": 1,
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "workspace_traffic_orders_join_signal",
+      "category": "workspace",
+      "passed": true,
+      "reason": "ok",
+      "status_code": 200,
+      "response_excerpt": {
+        "success": true,
+        "message": null,
+        "summary": "Joined traffic and orders tables by product_id and event_date/order_date, then summarized by traffic channel. Results show:\n\n- **ads** channel: 700,850 page views, 420,576 unique visitors, 1,000 paid orders, $969,918.75 revenue, conversion rate 0.238%\n- **social** channel: 701,470 page views, 413,926 unique visitors, 955 paid orders, $817,103.75 revenue, conversion rate 0.231%\n- **referral** channel: 701,830 page views, 421,141 unique visitors, 1,000 paid orders, $783,216.25 revenue, conversion rate 0.237%\n- **organic** channel: 700,230 page views, 413,192 unique visitors, 955 paid orders, $632,519.75 revenue, conversion rate 0.231%\n\nAll channels have similar traffic volumes (~700k page views each) and conversion rates (~0.23-0.24%). The ads channel leads in paid revenue and conversion rate, while organic has the lowest revenue. Overall conversion from unique visitors to paid orders is very low (~0.23%), indicating significant room for funnel optimization.",
+        "rows": 4,
+        "artifactId": 73
+      }
+    }
+  ]
+}
