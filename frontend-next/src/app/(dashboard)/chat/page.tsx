@@ -41,15 +41,15 @@ function ResultTable({ rows }: { rows: Record<string, unknown>[] }) {
   if (!rows.length) return null;
 
   return (
-    <div className="mt-5 overflow-hidden rounded-[14px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)]">
+    <div className="mt-5 overflow-hidden border border-[color:var(--color-border-primary)] bg-[color:var(--color-background-primary)]">
       <div className="max-h-[280px] overflow-auto">
         <table className="min-w-full border-collapse text-left text-sm">
-          <thead className="sticky top-0 bg-[color:#171717]">
+          <thead className="sticky top-0 bg-[color:var(--color-background-secondary)]">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column}
-                  className="border-b border-[color:var(--color-border-tertiary)] px-4 py-3 font-medium text-[color:var(--color-text-primary)]"
+                  className="border-b border-[color:var(--color-border-primary)] px-4 py-3 font-mono text-[11px] font-black uppercase text-[color:var(--color-text-primary)]"
                 >
                   {column}
                 </th>
@@ -103,6 +103,17 @@ function ChatPageContent() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const missingSessionRef = useRef<number | null>(null);
+
+  const resetConversationView = useCallback(() => {
+    setMessages([]);
+    setDatasets([]);
+    setSelectedDatasetId(undefined);
+    setInput("");
+    setLastResult(null);
+    setRecentArtifacts([]);
+    setShowCode(false);
+  }, []);
 
   const initialize = useCallback(async () => {
     setLoadingSessions(true);
@@ -129,20 +140,30 @@ function ChatPageContent() {
         setMessages(messageRes.data ?? []);
         setDatasets(nextDatasets);
         setRecentArtifacts(artifactRes.data ?? []);
-        if (selectedDatasetId && !nextDatasets.some((dataset) => dataset.id === selectedDatasetId)) {
-          setSelectedDatasetId(undefined);
-        }
+        setSelectedDatasetId((currentDatasetId) =>
+          currentDatasetId && !nextDatasets.some((dataset) => dataset.id === currentDatasetId)
+            ? undefined
+            : currentDatasetId
+        );
       } catch (error) {
         toast.error((error as Error).message || t("failed_load_session_details"));
       } finally {
         setLoadingMessages(false);
       }
     },
-    [selectedDatasetId, t]
+    [t]
   );
 
   useEffect(() => {
     void initialize();
+  }, [initialize]);
+
+  useEffect(() => {
+    const reloadSessions = () => {
+      void initialize();
+    };
+    window.addEventListener("chat-sessions-changed", reloadSessions);
+    return () => window.removeEventListener("chat-sessions-changed", reloadSessions);
   }, [initialize]);
 
   useEffect(() => {
@@ -154,39 +175,69 @@ function ChatPageContent() {
     if (loadingSessions) return;
 
     if (!sessions.length) {
+      missingSessionRef.current = null;
       setActiveSessionId(null);
-      setMessages([]);
-      setDatasets([]);
-      setRecentArtifacts([]);
-      setLastResult(null);
+      resetConversationView();
       return;
     }
 
     if (sessionParam && sessions.some((session) => session.id === sessionParam)) {
+      missingSessionRef.current = null;
       setActiveSessionId(sessionParam);
       return;
     }
 
+    if (sessionParam && !sessions.some((session) => session.id === sessionParam)) {
+      resetConversationView();
+      setActiveSessionId(null);
+
+      if (missingSessionRef.current !== sessionParam) {
+        missingSessionRef.current = sessionParam;
+        void initialize();
+        return;
+      }
+
+      missingSessionRef.current = null;
+      const fallback = sessions[0]?.id;
+      if (fallback) {
+        setActiveSessionId(fallback);
+        router.replace(`/chat?session=${fallback}`);
+      } else {
+        router.replace("/chat");
+      }
+      return;
+    }
+
     const fallback = sessions[0].id;
+    missingSessionRef.current = null;
     setActiveSessionId(fallback);
     router.replace(`/chat?session=${fallback}`);
-  }, [loadingSessions, router, sessionParam, sessions]);
+  }, [initialize, loadingSessions, resetConversationView, router, sessionParam, sessions]);
 
   useEffect(() => {
-    if (!activeSessionId) return;
+    resetConversationView();
+    if (!activeSessionId) {
+      setLoadingMessages(false);
+      return;
+    }
     void loadSessionPayload(activeSessionId);
-  }, [activeSessionId, loadSessionPayload]);
+  }, [activeSessionId, loadSessionPayload, resetConversationView]);
 
-  const ensureSession = useCallback(async () => {
+  const ensureSession = useCallback(async (titleHint?: string) => {
     if (activeSessionId) return activeSessionId;
 
     try {
-      const created = await chatApi.createSession(t("new_chat_session"));
+      const normalizedTitle = titleHint?.trim().replace(/\s+/g, " ");
+      const sessionTitle = normalizedTitle
+        ? normalizedTitle.slice(0, 28)
+        : t("new_chat_session");
+      const created = await chatApi.createSession(sessionTitle);
       const next = created.data;
       if (!next) return null;
       setSessions((prev) => [next, ...prev]);
       setActiveSessionId(next.id);
       router.replace(`/chat?session=${next.id}`);
+      window.dispatchEvent(new Event("chat-sessions-changed"));
       return next.id;
     } catch (error) {
       toast.error((error as Error).message || t("failed_create_session"));
@@ -195,10 +246,21 @@ function ChatPageContent() {
   }, [activeSessionId, router, t]);
 
   async function sendMessage() {
+    if (analyzing) return;
+
     const query = input.trim();
     if (!query) return;
 
-    const sessionId = await ensureSession();
+    const sessionBeforeSend = activeSessionId ? sessions.find((session) => session.id === activeSessionId) : null;
+    const shouldRenameActiveSession =
+      !!activeSessionId &&
+      messages.length === 0 &&
+      (!sessionBeforeSend?.title ||
+        sessionBeforeSend.title === t("new_chat_session") ||
+        sessionBeforeSend.title.includes("新建") ||
+        sessionBeforeSend.title.toLowerCase().includes("new"));
+
+    const sessionId = await ensureSession(query);
     if (!sessionId) {
       toast.error(t("no_active_session"));
       return;
@@ -210,6 +272,14 @@ function ChatPageContent() {
     setShowCode(false);
 
     try {
+      if (shouldRenameActiveSession) {
+        const normalizedTitle = query.replace(/\s+/g, " ").slice(0, 28);
+        const updated = await chatApi.updateSession(sessionId, normalizedTitle);
+        if (updated.data) {
+          setSessions((prev) => prev.map((session) => (session.id === sessionId ? updated.data! : session)));
+          window.dispatchEvent(new Event("chat-sessions-changed"));
+        }
+      }
       const result = await chatApi.analyze(sessionId, query, selectedDatasetId);
       setLastResult(result);
       if (!result.success) {
@@ -225,7 +295,7 @@ function ChatPageContent() {
   }
 
   async function triggerUpload(file?: File) {
-    const sessionId = await ensureSession();
+    const sessionId = await ensureSession(file?.name);
     if (!sessionId || !file) return;
 
     setUploading(true);
@@ -273,25 +343,35 @@ function ChatPageContent() {
   const hasConversation = messages.length > 0 || !!lastResult;
 
   const composer = (
-    <div className="mx-auto w-full max-w-[760px]">
-      <div className="rounded-[24px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] bg-[color:#171717] px-5 pb-4 pt-4 shadow-[0_8px_40px_rgba(0,0,0,0.26)]">
+    <div className="mx-auto w-full max-w-[860px]">
+      <div className="relay-panel">
+        <div className="flex items-center justify-between border-b border-[color:var(--color-border-tertiary)] px-4 py-3">
+          <span className="font-mono text-[11px] font-black uppercase tracking-[0.08em] text-[color:var(--color-text-tertiary)]">
+            analysis prompt
+          </span>
+          <span className="flex items-center gap-2 font-mono text-[11px] uppercase text-[color:var(--color-text-tertiary)]">
+            <span className="relay-status-dot" />
+            context ready
+          </span>
+        </div>
+        <div className="px-4 pb-4 pt-4">
         <Textarea
           value={input}
           onChange={(event) => setInput(event.target.value)}
           placeholder="输入分析问题..."
-          className="min-h-[84px] resize-none border-none bg-transparent px-0 py-0 text-[15px] shadow-none outline-none focus:border-none focus:outline-none focus-visible:border-transparent focus-visible:shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="min-h-[104px] resize-none rounded-[10px] border-none !bg-[color:var(--color-background-secondary)] px-4 py-3 text-[17px] leading-8 shadow-none outline-none hover:!bg-[color:var(--color-background-secondary)] focus:!bg-[color:var(--color-background-secondary)] focus:border-none focus:outline-none focus-visible:!bg-[color:var(--color-background-secondary)] focus-visible:border-transparent focus-visible:shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
           onKeyDown={(event) => {
-            if (event.ctrlKey && event.key === "Enter") {
+            if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
               event.preventDefault();
               void sendMessage();
             }
           }}
         />
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--color-border-tertiary)] pt-3">
           <div className="flex flex-wrap items-center gap-2">
             <select
-              className="chat-dataset-select h-9 rounded-[10px] border-none bg-transparent px-2 text-sm text-[color:var(--color-text-secondary)] outline-none ring-0 transition-colors"
+              className="chat-dataset-select h-9 rounded-[9px] border border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-primary)] px-3 font-mono text-[12px] text-[color:var(--color-text-secondary)] outline-none ring-0 transition-colors hover:bg-[color:var(--color-button-hover-background)]"
               value={selectedDatasetId ?? ""}
               onChange={(event) => {
                 const next = Number(event.target.value);
@@ -310,7 +390,7 @@ function ChatPageContent() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="grid h-9 w-9 place-items-center rounded-[10px] bg-transparent text-[color:var(--color-text-secondary)] transition-colors hover:bg-[color:#222222] hover:text-[color:var(--color-text-primary)] disabled:opacity-60"
+              className="grid h-9 w-9 place-items-center rounded-[9px] border border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-primary)] text-[color:var(--color-text-secondary)] transition-colors hover:bg-[color:var(--color-button-hover-background)] hover:text-[color:var(--color-text-primary)] disabled:opacity-60"
               title="上传数据集"
             >
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
@@ -327,7 +407,7 @@ function ChatPageContent() {
                 setWorkspaceDesc("");
                 setPromoteOpen(true);
               }}
-              className="grid h-9 w-9 place-items-center rounded-[10px] bg-transparent text-[color:var(--color-text-secondary)] transition-colors hover:bg-[color:#222222] hover:text-[color:var(--color-text-primary)]"
+              className="grid h-9 w-9 place-items-center rounded-[9px] border border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-primary)] text-[color:var(--color-text-secondary)] transition-colors hover:bg-[color:var(--color-button-hover-background)] hover:text-[color:var(--color-text-primary)]"
               title="转为工作区"
             >
               <FolderUp className="h-4 w-4" />
@@ -338,11 +418,12 @@ function ChatPageContent() {
             type="button"
             onClick={() => void sendMessage()}
             disabled={analyzing || !input.trim()}
-            className="grid h-11 w-11 place-items-center rounded-full bg-[color:var(--color-accent-highlight)] text-[#121212] transition-transform hover:scale-[1.02] disabled:opacity-50"
+            className="grid h-11 w-11 place-items-center rounded-[10px] bg-[color:var(--color-accent-highlight)] text-white transition-[filter,transform] hover:brightness-[0.96] active:scale-[0.98] disabled:opacity-50"
             title="发送"
           >
             {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
           </button>
+        </div>
         </div>
       </div>
     </div>
@@ -350,8 +431,8 @@ function ChatPageContent() {
 
   if (isEmptyState) {
     return (
-      <div className="flex min-h-[calc(100vh-4.5rem)] flex-col">
-        <div className="mx-auto flex w-full max-w-[960px] flex-1 items-center justify-center px-6 pb-10">
+      <div className="relay-frame flex h-full min-h-[calc(100vh-3rem)] flex-col border-0">
+        <div className="flex w-full flex-1 items-center justify-center px-6 py-10">
           {composer}
         </div>
 
@@ -398,13 +479,13 @@ function ChatPageContent() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-4.5rem)] flex-col">
-      <div className="mx-auto flex w-full max-w-[960px] flex-1 flex-col px-6 pb-6 pt-8">
+      <div className="relay-frame flex h-full min-h-[calc(100vh-3rem)] flex-col border-0">
+      <div className="flex w-full flex-1 flex-col px-6 pb-6 pt-10">
         <div
           ref={scrollRef}
           className="flex-1 overflow-y-auto"
         >
-          <div className="mx-auto max-w-[760px] space-y-8 pb-8">
+            <div className="mx-auto max-w-[820px] space-y-8 pb-8">
             {loadingMessages ? (
               <>
                 <Skeleton className="ml-auto h-16 w-[44%]" />
@@ -422,7 +503,7 @@ function ChatPageContent() {
                       className={cn(
                         "max-w-[78%] px-1 text-[15px] leading-8",
                         isUser
-                          ? "rounded-[18px] bg-[color:rgba(242,201,76,0.12)] px-5 py-4 text-[color:var(--color-text-primary)]"
+                          ? "relay-user-bubble px-5 py-3 font-medium shadow-none"
                           : "text-[color:var(--color-text-secondary)]"
                       )}
                     >
@@ -436,9 +517,9 @@ function ChatPageContent() {
               <div className="flex justify-start">
                 <div className="max-w-[760px] px-1">
                   {lastResult.summary ? (
-                    <div className="whitespace-pre-wrap text-[15px] leading-8 text-[color:var(--color-text-primary)]">
+                    <article className="whitespace-pre-wrap border-l-2 border-[color:var(--color-accent-highlight)] pl-5 text-[15px] leading-8 text-[color:var(--color-text-primary)]">
                       {lastResult.summary}
-                    </div>
+                    </article>
                   ) : null}
 
                   <ResultTable rows={lastResult.data ?? []} />
@@ -453,7 +534,7 @@ function ChatPageContent() {
                         {showCode ? "隐藏代码" : "查看代码"}
                       </button>
                       {showCode ? (
-                        <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-[14px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] bg-[color:#171717] px-4 py-4 text-sm leading-7 text-[color:var(--color-text-primary)]">
+                        <pre className="relay-code mt-3 overflow-x-auto whitespace-pre-wrap px-4 py-4 text-sm leading-7">
                           {lastResult.generatedCodeOrSql || lastResult.generatedSql}
                         </pre>
                       ) : null}
@@ -482,7 +563,7 @@ function ChatPageContent() {
                           artifactId: artifact.id,
                         });
                       }}
-                      className="rounded-[16px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] bg-[color:#171717] px-4 py-4 text-left transition-colors hover:border-[color:rgba(242,201,76,0.28)] hover:bg-[color:#202020]"
+                      className="relay-panel-soft px-4 py-4 text-left transition-colors hover:border-[color:var(--color-border-info)] hover:bg-[color:var(--color-background-primary)]"
                     >
                       <div className="line-clamp-2 text-sm font-medium text-[color:var(--color-text-primary)]">
                         {artifact.userQuery || t("artifact_query")}

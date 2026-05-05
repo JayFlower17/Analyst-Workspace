@@ -360,7 +360,7 @@ export default function DatasetsPage() {
               className={cn(
                 "rounded-[14px] border px-4 py-8 text-center transition-colors",
                 dragActive
-                  ? "border-[color:rgba(242,201,76,0.28)] bg-[color:rgba(242,201,76,0.08)]"
+                  ? "border-[color:var(--color-border-info)] bg-[color:var(--color-background-info)]"
                   : "border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-secondary)]"
               )}
             >
@@ -418,8 +418,8 @@ export default function DatasetsPage() {
                   className={cn(
                     "w-full rounded-[12px] border px-3 py-3 text-left text-sm transition-colors",
                     active
-                      ? "border-[color:rgba(242,201,76,0.36)] bg-[color:rgba(242,201,76,0.08)] text-[color:var(--color-text-primary)]"
-                      : "border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-secondary)] text-[color:var(--color-text-secondary)] hover:bg-[color:#202020]"
+                      ? "border-[color:var(--color-border-info)] bg-[color:var(--color-background-info)] text-[color:var(--color-text-primary)]"
+                      : "border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-secondary)] text-[color:var(--color-text-secondary)] hover:bg-[color:var(--color-sidebar-hover-background)]"
                   )}
                 >
                   {item.label}
@@ -553,7 +553,7 @@ export default function DatasetsPage() {
                       key={workspace.id}
                       type="button"
                       onClick={() => (window.location.href = `/workspace?groupId=${workspace.id}`)}
-                      className="subtle-panel px-4 py-4 text-left transition-colors hover:border-[color:rgba(242,201,76,0.28)] hover:bg-[color:#202020]"
+                      className="subtle-panel px-4 py-4 text-left transition-colors hover:border-[color:var(--color-border-info)] hover:bg-[color:var(--color-sidebar-hover-background)]"
                     >
                       <div className="text-[16px] font-medium text-[color:var(--color-text-primary)]">{workspace.name}</div>
                       <div className="mt-3 line-clamp-3 text-sm leading-6 text-[color:var(--color-text-secondary)]">
@@ -583,7 +583,7 @@ export default function DatasetsPage() {
                     onClick={() => {
                       if (artifact.groupId) window.location.href = `/workspace?groupId=${artifact.groupId}`;
                     }}
-                    className="subtle-panel px-4 py-4 text-left transition-colors hover:border-[color:rgba(242,201,76,0.28)] hover:bg-[color:#202020]"
+                    className="subtle-panel px-4 py-4 text-left transition-colors hover:border-[color:var(--color-border-info)] hover:bg-[color:var(--color-sidebar-hover-background)]"
                   >
                     <div className="line-clamp-2 text-sm font-medium text-[color:var(--color-text-primary)]">
                       {artifact.userQuery || t("artifact_query")}

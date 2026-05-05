@@ -61,6 +61,21 @@ public class ChatService {
         return duckDBRepository.findAllChatSessions();
     }
 
+    public ChatSession updateSessionTitle(Long sessionId, String title) throws SQLException {
+        ensureSessionExists(sessionId);
+        String nextTitle = title == null ? "" : title.trim();
+        if (nextTitle.isBlank()) {
+            throw new IllegalArgumentException("会话标题不能为空");
+        }
+        duckDBRepository.updateChatSessionTitle(sessionId, nextTitle.length() > 80 ? nextTitle.substring(0, 80) : nextTitle);
+        return duckDBRepository.findChatSessionById(sessionId);
+    }
+
+    public void deleteSession(Long sessionId) throws SQLException {
+        ensureSessionExists(sessionId);
+        duckDBRepository.deleteChatSession(sessionId);
+    }
+
     public List<ChatMessage> getSessionMessages(Long sessionId) throws SQLException {
         ensureSessionExists(sessionId);
         return duckDBRepository.findChatMessagesBySessionId(sessionId);
@@ -295,4 +310,3 @@ public class ChatService {
         }
     }
 }
-

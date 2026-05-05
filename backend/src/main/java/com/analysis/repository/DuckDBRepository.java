@@ -659,7 +659,7 @@ public class DuckDBRepository {
 
     public List<ChatSession> findAllChatSessions() throws SQLException {
         List<ChatSession> sessions = new ArrayList<>();
-        String sql = "SELECT * FROM meta_chat_sessions ORDER BY updated_at DESC";
+        String sql = "SELECT * FROM meta_chat_sessions WHERE status = 'ACTIVE' ORDER BY updated_at DESC";
         try (Connection connection = dataSource.getConnection();
                 Statement stmt = connection.createStatement();
                 ResultSet rs = stmt.executeQuery(sql)) {
@@ -670,8 +670,27 @@ public class DuckDBRepository {
         return sessions;
     }
 
+    public boolean updateChatSessionTitle(Long sessionId, String title) throws SQLException {
+        String sql = "UPDATE meta_chat_sessions SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'ACTIVE'";
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, title);
+            stmt.setLong(2, sessionId);
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
+    public boolean deleteChatSession(Long sessionId) throws SQLException {
+        String sql = "UPDATE meta_chat_sessions SET status = 'DELETED', updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, sessionId);
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
     public boolean touchChatSession(Long sessionId) throws SQLException {
-        String sql = "UPDATE meta_chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+        String sql = "UPDATE meta_chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'ACTIVE'";
         try (Connection connection = dataSource.getConnection();
                 PreparedStatement stmt = connection.prepareStatement(sql)) {
             stmt.setLong(1, sessionId);

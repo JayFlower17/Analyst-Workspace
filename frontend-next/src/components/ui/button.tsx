@@ -3,14 +3,14 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--border-radius-md)] border [border-width:0.5px] text-[13px] font-medium whitespace-nowrap transition-[background-color,border-color,color,transform,box-shadow] duration-150 outline-none select-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 focus-visible:shadow-[0_0_0_2px_var(--color-focus-ring)] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--border-radius-md)] border text-[13px] font-black whitespace-nowrap transition-[background-color,border-color,color,transform,box-shadow] duration-150 outline-none select-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 focus-visible:shadow-[0_0_0_2px_var(--color-focus-ring)] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
-          "border-[color:rgba(242,201,76,0.32)] bg-[color:var(--color-accent-highlight)] text-[#121212] hover:border-[color:rgba(242,201,76,0.42)] hover:bg-[#f5cf62]",
+          "border-[color:var(--color-accent-highlight)] bg-[color:var(--color-accent-highlight)] text-white hover:border-[color:var(--color-accent-highlight)] hover:bg-[color:#b90000]",
         outline:
-          "border-[color:var(--color-border-secondary)] bg-transparent text-[color:var(--color-text-primary)] hover:border-[color:rgba(242,201,76,0.3)] hover:bg-[color:var(--color-button-hover-background)]",
+          "border-[color:var(--color-border-primary)] bg-transparent text-[color:var(--color-text-primary)] hover:border-[color:var(--color-border-info)] hover:bg-[color:var(--color-button-hover-background)]",
         secondary:
           "border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-secondary)] text-[color:var(--color-text-primary)] hover:border-[color:var(--color-border-secondary)] hover:bg-[color:var(--color-sidebar-hover-background)]",
         ghost:

@@ -82,6 +82,17 @@ export const chatApi = {
   getSessions() {
     return request<ApiEnvelope<ChatSession[]>>("/chat/sessions");
   },
+  updateSession(sessionId: number, title: string) {
+    return request<ApiEnvelope<ChatSession>>(`/chat/sessions/${sessionId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title }),
+    });
+  },
+  deleteSession(sessionId: number) {
+    return request<ApiEnvelope<MessageResponse>>(`/chat/sessions/${sessionId}`, {
+      method: "DELETE",
+    });
+  },
   getMessages(sessionId: number) {
     return request<ApiEnvelope<ChatMessage[]>>(`/chat/sessions/${sessionId}/messages`);
   },

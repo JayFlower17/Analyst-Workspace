@@ -4,7 +4,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -59,6 +61,39 @@ public class ChatController {
             response.put("success", false);
             response.put("message", e.getMessage());
             return ResponseEntity.internalServerError().body(response);
+        }
+    }
+
+    @PatchMapping("/sessions/{sessionId}")
+    public ResponseEntity<Map<String, Object>> updateSession(
+            @PathVariable("sessionId") Long sessionId,
+            @RequestBody CreateChatSessionRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            response.put("success", true);
+            response.put("data", chatService.updateSessionTitle(sessionId, request != null ? request.getTitle() : null));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to update chat session {}: {}", sessionId, e.getMessage(), e);
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    public ResponseEntity<Map<String, Object>> deleteSession(@PathVariable("sessionId") Long sessionId) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            chatService.deleteSession(sessionId);
+            response.put("success", true);
+            response.put("message", "会话已删除");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to delete chat session {}: {}", sessionId, e.getMessage(), e);
+            response.put("success", false);
+            response.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
         }
     }
 
@@ -137,4 +172,3 @@ public class ChatController {
         }
     }
 }
-

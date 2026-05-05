@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { BarChart3, Database, Globe2, LogOut, MessageSquare, Monitor, Plus, Settings2, Moon, Sun } from "lucide-react";
+import { BarChart3, Database, Globe2, LogOut, MessageSquare, Moon, Plus, Settings2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { chatApi } from "@/lib/api/client";
 import { clearAuth, getStoredToken, getStoredUser } from "@/lib/auth";
@@ -52,7 +52,7 @@ export function AppShell({ children }: ShellProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { locale, setLocale, t } = useLanguage();
-  const { theme, themeMode, setThemeMode } = useTheme();
+  const { themeMode, setThemeMode } = useTheme();
 
   const [ready, setReady] = useState(false);
   const [userName, setUserName] = useState("User");
@@ -68,11 +68,11 @@ export function AppShell({ children }: ShellProps) {
 
   const navItems = useMemo<NavItem[]>(
     () => [
-      { label: t("nav_chat"), href: "/chat", icon: MessageSquare },
-      { label: t("nav_workplace"), href: "/workspace", icon: BarChart3 },
-      { label: t("nav_datasets"), href: "/datasets", icon: Database },
+      { label: "Ask", href: "/chat", icon: MessageSquare },
+      { label: "Workspace", href: "/workspace", icon: BarChart3 },
+      { label: "Warehouse", href: "/datasets", icon: Database },
     ],
-    [t]
+    []
   );
 
   const loadChatSessions = useCallback(async () => {
@@ -110,17 +110,43 @@ export function AppShell({ children }: ShellProps) {
     void loadChatSessions();
   }, [loadChatSessions, pathname, ready, activeChatSessionId]);
 
+  useEffect(() => {
+    if (!ready) return;
+    const reload = () => {
+      if (pathname.startsWith("/chat")) void loadChatSessions();
+    };
+    window.addEventListener("chat-sessions-changed", reload);
+    return () => window.removeEventListener("chat-sessions-changed", reload);
+  }, [loadChatSessions, pathname, ready]);
+
   const handleCreateSession = useCallback(async () => {
     try {
       const created = await chatApi.createSession(t("new_chat_session"));
       const next = created.data;
       if (!next) return;
       setChatSessions((prev) => [next, ...prev.filter((session) => session.id !== next.id)]);
+      window.dispatchEvent(new Event("chat-sessions-changed"));
       router.push(`/chat?session=${next.id}`);
     } catch (error) {
       toast.error((error as Error).message || t("failed_create_session"));
     }
   }, [router, t]);
+
+  const handleDeleteSession = useCallback(
+    async (sessionId: number) => {
+      try {
+        await chatApi.deleteSession(sessionId);
+        setChatSessions((prev) => prev.filter((session) => session.id !== sessionId));
+        window.dispatchEvent(new Event("chat-sessions-changed"));
+        if (sessionId === activeChatSessionId) {
+          router.replace("/chat");
+        }
+      } catch (error) {
+        toast.error((error as Error).message || "删除会话失败");
+      }
+    },
+    [activeChatSessionId, router]
+  );
 
   if (!ready) {
     return (
@@ -130,43 +156,70 @@ export function AppShell({ children }: ShellProps) {
     );
   }
 
+  const activeModule = navItems.find((item) => pathname.startsWith(item.href)) ?? navItems[0];
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto grid min-h-screen max-w-[1600px] grid-cols-1 xl:grid-cols-[232px_minmax(0,1fr)]">
-        <aside className="sidebar-surface flex flex-col border-r [border-width:0.5px] border-[color:var(--color-border-tertiary)] xl:min-h-screen">
-          <div className="flex h-12 shrink-0 items-center justify-between px-[14px]">
-            <p className="truncate text-[14px] font-medium tracking-[0.01em] text-[color:var(--color-text-primary)]">{t("app_name")}</p>
-            <button
-              type="button"
-              onClick={() => void handleCreateSession()}
-              aria-label={t("new_chat")}
-              title={t("new_chat")}
-              className="inline-flex size-7 items-center justify-center rounded-[7px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] bg-transparent text-[color:var(--color-text-primary)] transition-[background-color,border-color,color] duration-150 hover:bg-[color:var(--color-button-hover-background)]"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
+      <div className="grid min-h-screen grid-cols-1 xl:grid-cols-[248px_minmax(0,1fr)]">
+        <aside className="sidebar-surface flex flex-col border-r border-[color:var(--color-border-tertiary)] xl:min-h-screen">
+          <div className="border-b border-[color:var(--color-border-tertiary)] px-4 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="relay-label">Analyst Workspace</p>
+                <p className="mt-1 truncate text-[18px] font-black tracking-[-0.01em] text-[color:var(--color-text-primary)]">
+                  Context Relay
+                </p>
+              </div>
+              <div className="relay-status-dot mt-1 shrink-0" />
+            </div>
+            <div className="mt-4 grid grid-cols-3 overflow-hidden rounded-[10px] border border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-primary)] text-center font-mono text-[10px] uppercase text-[color:var(--color-text-tertiary)]">
+              <span className="border-r border-[color:var(--color-border-tertiary)] py-2">API</span>
+              <span className="border-r border-[color:var(--color-border-tertiary)] py-2">RAG</span>
+              <span className="py-2">SQL</span>
+            </div>
           </div>
 
-          <nav className="flex-1 overflow-y-auto p-2">
+          <div className="flex h-12 shrink-0 items-center justify-between border-b border-[color:var(--color-border-tertiary)] px-3">
+            <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[color:var(--color-text-tertiary)]">Routes</p>
+            <span className="font-mono text-[10px] uppercase text-[color:var(--color-text-tertiary)]">03 modules</span>
+          </div>
+
+          <nav className="flex-1 overflow-y-auto p-3">
             <div className="space-y-1">
               {navItems.map((item) => {
                 const active = pathname.startsWith(item.href);
                 const Icon = item.icon;
                 return (
                   <div key={item.href} className="space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => router.push(item.href)}
-                      className={cn(
-                        "flex h-[40px] w-full items-center gap-2 rounded-[8px] px-[10px] text-left text-[14px] transition-[background-color,color,border-color] duration-[120ms] border [border-width:0.5px]",
-                        active
-                          ? "border-[color:rgba(242,201,76,0.3)] bg-[color:rgba(242,201,76,0.08)] font-medium text-[color:var(--color-text-primary)]"
-                          : "border-transparent bg-transparent font-normal text-[color:var(--color-text-secondary)] hover:bg-[color:var(--color-sidebar-hover-background)]"
-                      )}
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => router.push(item.href)}
+                        className={cn(
+                          "flex h-[44px] min-w-0 flex-1 items-center gap-3 rounded-[10px] border px-3 text-left text-[14px] transition-[background-color,color,border-color] duration-[120ms]",
+                          active
+                            ? "border-transparent bg-[color:var(--color-sidebar-active-background)] font-black text-[color:var(--color-sidebar-active-text)]"
+                            : "border-transparent bg-transparent font-medium text-[color:var(--color-text-secondary)] hover:bg-[color:var(--color-sidebar-hover-background)]"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="flex-1">{item.label}</span>
+                        <span className="font-mono text-[10px] text-current opacity-55">
+                          {item.href === "/chat" ? "01" : item.href === "/workspace" ? "02" : "03"}
+                        </span>
+                      </button>
+                      {item.href === "/chat" ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleCreateSession()}
+                          aria-label={t("new_chat")}
+                          title={t("new_chat")}
+                          className="inline-flex h-[44px] w-9 shrink-0 items-center justify-center rounded-[10px] border border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-primary)] text-[color:var(--color-text-primary)] transition-[background-color,border-color,color] duration-150 hover:bg-[color:var(--color-button-hover-background)]"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                    </div>
 
                     {item.href === "/chat" && active ? (
                       <div className="space-y-1">
@@ -177,21 +230,35 @@ export function AppShell({ children }: ShellProps) {
                           </>
                         ) : (
                           chatSessions.map((session) => (
-                            <button
+                            <div
                               key={session.id}
-                              type="button"
-                              onClick={() => router.push(`/chat?session=${session.id}`)}
                               className={cn(
-                                "flex h-8 w-full items-center rounded-[7px] pr-[10px] pl-[28px] text-left text-[13px] text-[color:var(--color-text-secondary)] transition-[background-color,color] duration-[120ms]",
+                                "group/session flex h-8 w-full items-center rounded-[8px] text-[12px] text-[color:var(--color-text-secondary)] transition-[background-color,color,border-color] duration-[120ms]",
                                 session.id === activeChatSessionId
-                                  ? "bg-[color:var(--color-sidebar-active-background)] font-medium text-[color:var(--color-text-primary)]"
+                                  ? "bg-[color:var(--color-sidebar-active-background)] font-bold text-[color:var(--color-text-primary)]"
                                   : "bg-transparent font-normal hover:bg-[color:var(--color-button-hover-background)] hover:text-[color:var(--color-text-primary)]"
                               )}
                             >
-                              <span className="truncate">
+                              <button
+                                type="button"
+                                onClick={() => router.push(`/chat?session=${session.id}`)}
+                                className="min-w-0 flex-1 truncate py-1.5 pr-2 pl-3 text-left"
+                              >
                                 {formatSessionLabel(session, t("session_label", { id: session.id }))}
-                              </span>
-                            </button>
+                              </button>
+                              <button
+                                type="button"
+                                aria-label="删除会话"
+                                title="删除会话"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void handleDeleteSession(session.id);
+                                }}
+                                className="mr-1 grid size-6 shrink-0 place-items-center opacity-0 transition-opacity hover:text-[color:var(--color-text-danger)] group-hover/session:opacity-100"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           ))
                         )}
                       </div>
@@ -202,9 +269,9 @@ export function AppShell({ children }: ShellProps) {
             </div>
           </nav>
 
-          <div className="border-t [border-width:0.5px] border-[color:var(--color-border-tertiary)] p-2">
-            <div className="flex items-center gap-2 rounded-[8px] px-2 py-[6px] transition-[background-color] duration-[120ms] hover:bg-[color:var(--color-button-hover-background)]">
-              <div className="grid size-8 shrink-0 place-items-center rounded-full bg-[color:var(--color-background-info)] text-[13px] font-medium text-[color:var(--color-text-info)]">
+          <div className="border-t border-[color:var(--color-border-tertiary)] p-3">
+            <div className="flex items-center gap-2 rounded-[12px] border border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-primary)] px-2 py-[7px] transition-[background-color] duration-[120ms] hover:bg-[color:var(--color-button-hover-background)]">
+              <div className="grid size-8 shrink-0 place-items-center rounded-[8px] bg-[color:var(--color-text-primary)] text-[12px] font-black text-[color:var(--color-background-primary)]">
                 {userLabel}
               </div>
               <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[color:var(--color-text-primary)]">
@@ -212,7 +279,7 @@ export function AppShell({ children }: ShellProps) {
               </span>
               <DropdownMenu>
                 <DropdownMenuTrigger
-                  className="inline-flex size-5 items-center justify-center rounded-[6px] text-[color:var(--color-text-secondary)] transition-[background-color,color] duration-[120ms] hover:bg-[color:var(--color-button-hover-background)] hover:text-[color:var(--color-text-primary)]"
+                  className="inline-flex size-6 items-center justify-center text-[color:var(--color-text-secondary)] transition-[background-color,color] duration-[120ms] hover:bg-[color:var(--color-button-hover-background)] hover:text-[color:var(--color-text-primary)]"
                   aria-label={t("settings")}
                 >
                   <Settings2 className="h-4 w-4" />
@@ -229,6 +296,22 @@ export function AppShell({ children }: ShellProps) {
                   <DropdownMenuSeparator />
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger>
+                      <Moon className="h-4 w-4" />
+                      主题
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="min-w-[160px] rounded-[12px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-primary)] p-1 shadow-none ring-0">
+                      <DropdownMenuRadioGroup
+                        value={themeMode}
+                        onValueChange={(value) => setThemeMode(value as "light" | "dark" | "system")}
+                      >
+                        <DropdownMenuRadioItem value="light">浅色</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="dark">深色</DropdownMenuRadioItem>
+                        <DropdownMenuRadioItem value="system">跟随系统</DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
                       <Globe2 className="h-4 w-4" />
                       {t("language")}
                     </DropdownMenuSubTrigger>
@@ -239,29 +322,6 @@ export function AppShell({ children }: ShellProps) {
                       </DropdownMenuRadioGroup>
                     </DropdownMenuSubContent>
                   </DropdownMenuSub>
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      {theme === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                      {t("appearance")}
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="min-w-[180px] rounded-[12px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-primary)] p-1 shadow-none ring-0">
-                      <DropdownMenuRadioGroup value={themeMode} onValueChange={(value) => setThemeMode(value as "system" | "light" | "dark")}>
-                        <DropdownMenuRadioItem value="system">
-                          <Monitor className="h-4 w-4" />
-                          {t("follow_system")}
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="light">
-                          <Sun className="h-4 w-4" />
-                          {t("light_mode")}
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value="dark">
-                          <Moon className="h-4 w-4" />
-                          {t("dark_mode")}
-                        </DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                  <DropdownMenuSeparator />
                   <DropdownMenuGroup>
                     <DropdownMenuItem
                       variant="destructive"
@@ -280,9 +340,20 @@ export function AppShell({ children }: ShellProps) {
           </div>
         </aside>
 
-        <main className="min-w-0">
-          <div className="page-shell">
-            <div className="fade-reveal">{children}</div>
+        <main className={cn("flex min-h-screen min-w-0 flex-col overflow-hidden", pathname.startsWith("/chat") && "chat-main")}>
+          <header className="flex h-12 shrink-0 items-center justify-between border-b border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-secondary)] px-5">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="relay-status-dot" />
+              <span className="truncate text-sm font-black text-[color:var(--color-text-primary)]">{activeModule.label}</span>
+            </div>
+            <div className="hidden items-center gap-5 font-mono text-[10px] uppercase text-[color:var(--color-text-tertiary)] md:flex">
+              <span>backend : 8080</span>
+              <span>executor : 8000</span>
+              <span>local mode</span>
+            </div>
+          </header>
+          <div className={cn("page-shell", pathname.startsWith("/chat") && "page-shell-chat")}>
+            <div className={cn("fade-reveal", pathname.startsWith("/chat") && "h-full")}>{children}</div>
           </div>
         </main>
       </div>

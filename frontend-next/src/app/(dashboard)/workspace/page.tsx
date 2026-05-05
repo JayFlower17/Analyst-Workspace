@@ -228,7 +228,7 @@ function ArtifactCardGrid({ artifacts, emptyText, gridClassName, onOpenDetail }:
           key={artifact.id}
           type="button"
           onClick={() => onOpenDetail(artifact)}
-          className="subtle-panel text-left px-4 py-4 transition-colors hover:border-[color:rgba(242,201,76,0.28)] hover:bg-[color:#202020]"
+          className="subtle-panel text-left px-4 py-4 transition-colors hover:border-[color:var(--color-border-info)] hover:bg-[color:var(--color-sidebar-hover-background)]"
         >
           <div className="line-clamp-2 text-sm font-medium text-[color:var(--color-text-primary)]">
             {artifact.userQuery || "分析记录"}

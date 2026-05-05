@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, TerminalSquare } from "lucide-react";
 import { authApi } from "@/lib/api/client";
 import { getStoredToken, persistAuth } from "@/lib/auth";
 import { useLanguage } from "@/components/providers/language-provider";
@@ -110,15 +110,34 @@ export function AuthPageShell({ mode }: Props) {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-background px-6 py-12">
-      <div className="w-full max-w-md rounded-[20px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] bg-[color:var(--color-background-primary)] p-8 shadow-none">
+    <main className="relay-frame grid min-h-screen place-items-center px-6 py-12">
+      <div className="grid w-full max-w-5xl overflow-hidden border border-[color:var(--color-border-primary)] bg-[color:var(--color-background-primary)] lg:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="hidden border-r border-[color:var(--color-border-primary)] p-8 lg:block">
+          <p className="relay-label">access terminal</p>
+          <h1 className="mt-4 max-w-[520px] text-[46px] font-black leading-none tracking-[-0.045em]">
+            登录后进入联合上下文分析工作台。
+          </h1>
+          <div className="mt-10 relay-panel-soft p-4">
+            <div className="flex items-center justify-between border-b border-[color:var(--color-border-primary)] pb-3">
+              <span className="font-mono text-xs font-black uppercase">local services</span>
+              <span className="relay-status-dot" />
+            </div>
+            <div className="mt-4 space-y-3 font-mono text-xs text-[color:var(--color-text-secondary)]">
+              <div className="flex justify-between"><span>frontend</span><span>3000</span></div>
+              <div className="flex justify-between"><span>backend</span><span>8080</span></div>
+              <div className="flex justify-between"><span>executor</span><span>8000</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-8">
         <div className="mb-6 flex items-center gap-2 text-[color:var(--color-text-secondary)]">
-          <Sparkles className="h-4 w-4" />
-          <span className="text-sm font-medium">{t("app_name")}</span>
+          <TerminalSquare className="h-4 w-4" />
+          <span className="font-mono text-xs font-black uppercase">{t("app_name")}</span>
         </div>
 
         <div className="mb-6 space-y-2">
-          <h1 className="text-2xl font-medium text-[color:var(--color-text-primary)]">{title}</h1>
+          <h1 className="text-2xl font-black text-[color:var(--color-text-primary)]">{title}</h1>
           <p className="text-sm text-[color:var(--color-text-secondary)]">{description}</p>
         </div>
 
@@ -210,6 +229,7 @@ export function AuthPageShell({ mode }: Props) {
               </Link>
             </p>
           )}
+        </div>
         </div>
       </div>
     </main>
