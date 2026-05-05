@@ -34,7 +34,8 @@ import org.springframework.web.multipart.MultipartFile;
 import com.analysis.model.dto.DocumentChunkSearchResult;
 import com.analysis.model.entity.DocumentAsset;
 import com.analysis.model.entity.DocumentChunk;
-import com.analysis.repository.DuckDBRepository;
+import com.analysis.persistence.DocumentStore;
+import com.analysis.persistence.WorkspaceCatalogStore;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -48,13 +49,14 @@ public class DocumentService {
     private static final Set<String> SUPPORTED_EXTENSIONS = Set.of(".pdf", ".docx", ".txt", ".md");
     private static final int MAX_MERGED_ADJACENT_CHUNKS = 2;
 
-    private final DuckDBRepository duckDBRepository;
+    private final DocumentStore documentStore;
+    private final WorkspaceCatalogStore workspaceCatalogStore;
     private final ObjectProvider<VectorStore> vectorStoreProvider;
 
     @Value("${upload.path:./uploads}")
     private String uploadPath;
 
-    @Value("${app.vector-store.enabled:true}")
+    @Value("${app.vector-store.enabled:false}")
     private boolean vectorStoreEnabled;
 
     @PostConstruct
@@ -73,7 +75,7 @@ public class DocumentService {
         if (groupId == null) {
             throw new IllegalArgumentException("文档必须绑定到工作区");
         }
-        if (duckDBRepository.findDatasetGroupById(groupId) == null) {
+        if (workspaceCatalogStore.findDatasetGroupById(groupId) == null) {
             throw new IllegalArgumentException("工作区不存在: " + groupId);
         }
 
@@ -103,27 +105,27 @@ public class DocumentService {
         asset.setProcessingError(null);
         asset.setChunkCount(0);
 
-        Long assetId = duckDBRepository.saveDocumentAsset(asset);
-        DocumentAsset saved = duckDBRepository.findDocumentAssetById(assetId);
+        Long assetId = documentStore.saveDocumentAsset(asset);
+        DocumentAsset saved = documentStore.findDocumentAssetById(assetId);
         processDocument(saved);
-        return duckDBRepository.findDocumentAssetById(assetId);
+        return documentStore.findDocumentAssetById(assetId);
     }
 
     public List<DocumentAsset> getDocumentsByGroupId(Long groupId) throws SQLException {
         ensureGroupExists(groupId);
-        return duckDBRepository.findDocumentAssetsByGroupId(groupId);
+        return documentStore.findDocumentAssetsByGroupId(groupId);
     }
 
     public DocumentAsset getDocumentById(Long documentId) throws SQLException {
-        return duckDBRepository.findDocumentAssetById(documentId);
+        return documentStore.findDocumentAssetById(documentId);
     }
 
     public List<DocumentChunk> getDocumentChunks(Long documentId) throws SQLException {
-        DocumentAsset asset = duckDBRepository.findDocumentAssetById(documentId);
+        DocumentAsset asset = documentStore.findDocumentAssetById(documentId);
         if (asset == null) {
             throw new IllegalArgumentException("文档不存在");
         }
-        return duckDBRepository.findDocumentChunksByDocumentId(documentId);
+        return documentStore.findDocumentChunksByDocumentId(documentId);
     }
 
     public List<DocumentChunkSearchResult> searchDocumentChunks(Long groupId, String query, Integer topK)
@@ -153,12 +155,12 @@ public class DocumentService {
     }
 
     public void deleteDocument(Long documentId) throws Exception {
-        DocumentAsset asset = duckDBRepository.findDocumentAssetById(documentId);
+        DocumentAsset asset = documentStore.findDocumentAssetById(documentId);
         if (asset == null) {
             throw new IllegalArgumentException("文档不存在");
         }
-        duckDBRepository.deleteDocumentChunksByDocumentId(documentId);
-        duckDBRepository.deleteDocumentAssetById(documentId);
+        documentStore.deleteDocumentChunksByDocumentId(documentId);
+        documentStore.deleteDocumentAssetById(documentId);
         if (asset.getStoredPath() != null && !asset.getStoredPath().isBlank()) {
             Files.deleteIfExists(Paths.get(asset.getStoredPath()));
         }
@@ -168,7 +170,7 @@ public class DocumentService {
         if (groupId == null) {
             throw new IllegalArgumentException("工作区 ID 不能为空");
         }
-        if (duckDBRepository.findDatasetGroupById(groupId) == null) {
+        if (workspaceCatalogStore.findDatasetGroupById(groupId) == null) {
             throw new IllegalArgumentException("工作区不存在: " + groupId);
         }
     }
@@ -186,23 +188,23 @@ public class DocumentService {
             return;
         }
         try {
-            duckDBRepository.updateDocumentAssetProcessing(asset.getId(), "PARSING", null, 0);
+            documentStore.updateDocumentAssetProcessing(asset.getId(), "PARSING", null, 0);
             String extractedText = extractDocumentText(asset);
             List<String> chunks = chunkText(extractedText);
-            duckDBRepository.deleteDocumentChunksByDocumentId(asset.getId());
+            documentStore.deleteDocumentChunksByDocumentId(asset.getId());
             List<DocumentChunk> persistedChunks = new ArrayList<>();
             for (int i = 0; i < chunks.size(); i++) {
                 String metadataJson = "{\"source\":\"document\",\"chunkIndex\":" + i + "}";
                 DocumentChunk chunk = buildChunk(asset.getId(), i, chunks.get(i), metadataJson);
-                duckDBRepository.saveDocumentChunk(chunk);
+                documentStore.saveDocumentChunk(chunk);
                 persistedChunks.add(chunk);
             }
-            duckDBRepository.updateDocumentAssetProcessing(asset.getId(), "PARSED", null, chunks.size());
+            documentStore.updateDocumentAssetProcessing(asset.getId(), "PARSED", null, chunks.size());
             indexDocumentChunksIfAvailable(asset, persistedChunks);
         } catch (Exception e) {
             log.warn("Document processing failed for {}: {}", asset.getId(), e.getMessage());
             try {
-                duckDBRepository.updateDocumentAssetProcessing(asset.getId(), "FAILED", e.getMessage(), 0);
+                documentStore.updateDocumentAssetProcessing(asset.getId(), "FAILED", e.getMessage(), 0);
             } catch (SQLException sqlException) {
                 log.error("Failed to persist document processing error for {}: {}", asset.getId(), sqlException.getMessage());
             }
@@ -353,7 +355,7 @@ public class DocumentService {
     }
 
     private List<DocumentChunkSearchResult> searchLexically(Long groupId, String query, int topK) throws SQLException {
-        List<DocumentAsset> assets = duckDBRepository.findDocumentAssetsByGroupId(groupId);
+        List<DocumentAsset> assets = documentStore.findDocumentAssetsByGroupId(groupId);
         if (assets.isEmpty()) {
             return List.of();
         }
@@ -364,7 +366,7 @@ public class DocumentService {
         List<ScoredChunk> scoredChunks = new ArrayList<>();
 
         for (DocumentAsset asset : assets) {
-            List<DocumentChunk> chunks = duckDBRepository.findDocumentChunksByDocumentId(asset.getId());
+            List<DocumentChunk> chunks = documentStore.findDocumentChunksByDocumentId(asset.getId());
             for (DocumentChunk chunk : chunks) {
                 double score = scoreChunk(query, terms, chunk.getChunkText());
                 if (score > 0) {

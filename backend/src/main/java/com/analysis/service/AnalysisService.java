@@ -29,9 +29,9 @@ import com.analysis.model.route.AnalysisRouteType;
 import com.analysis.model.validation.AnalysisValidationReport;
 import com.analysis.model.validation.RiskNotice;
 import com.analysis.model.entity.Dataset;
+import com.analysis.persistence.AnalysisArtifactStore;
 import com.analysis.service.WorkspaceSchemaService.WorkspaceSchemaContext;
 import com.analysis.service.WorkspaceContextAssembler.WorkspaceAnalysisContext;
-import com.analysis.repository.DuckDBRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
@@ -46,7 +46,7 @@ public class AnalysisService {
     private final AnalysisPlanGenerator planGenerator;
     private final StructuredSqlGenerator structuredSqlGenerator;
     private final SqlExecutor sqlExecutor;
-    private final DuckDBRepository duckDBRepository;
+    private final AnalysisArtifactStore analysisArtifactStore;
     private final PythonExecutor pythonExecutor;
     private final WorkspaceSchemaService workspaceSchemaService;
     private final WorkspaceContextAssembler workspaceContextAssembler;
@@ -55,6 +55,8 @@ public class AnalysisService {
     private final AnalysisResultValidator analysisResultValidator;
     private final RiskNoticeBuilder riskNoticeBuilder;
     private final AnalysisReportBuilder analysisReportBuilder;
+    private final ArtifactMemoryExtractor artifactMemoryExtractor;
+    private final ArtifactMemoryVectorService artifactMemoryVectorService;
     private final ObjectMapper objectMapper;
 
     @Value("${duckdb.path:./data/analysis.duckdb}")
@@ -72,6 +74,7 @@ public class AnalysisService {
             Dataset executionDataset;
             UnifiedAnalysisContext unifiedContext = null;
             UnifiedContextSummary contextSummary = null;
+            Long contextTraceId = null;
             List<ToolExecutionLog> executionLogs = new ArrayList<>();
             AnalysisValidationReport validationReport = AnalysisValidationReport.ok();
             List<RiskNotice> riskNotices = List.of();
@@ -93,9 +96,11 @@ public class AnalysisService {
                         request.getQuery(), request.getGroupId(), context.datasets().size());
                 WorkspaceAnalysisContext analysisContext = workspaceContextAssembler.assemble(request, context);
                 executionLogs.addAll(analysisContext.executionLogs());
+                contextTraceId = analysisContext.contextTraceId();
                 unifiedContext = analysisContext.unifiedContext();
                 contextSummary = unifiedContext.summary();
                 response.setContextSummary(contextSummary);
+                response.setContextTraceId(contextTraceId);
                 if (routeDecision.route() == AnalysisRouteType.DOCUMENT_EXPLANATION) {
                     String summary = buildDocumentOnlySummary(unifiedContext, request.getQuery());
                     validationReport = validationReport.merge(
@@ -109,6 +114,7 @@ public class AnalysisService {
                     response.setSummary(summary);
                     response.setExecutionTime(System.currentTimeMillis() - startTime);
                     response.setContextSummary(contextSummary);
+                    response.setContextTraceId(contextTraceId);
                     response.setRouteDecision(routeDecision);
                     response.setAnalysisPlan(analysisPlan);
                     response.setExecutionLogs(executionLogs);
@@ -130,7 +136,8 @@ public class AnalysisService {
                             summary,
                             response.getRecommendedChart(),
                             List.of(),
-                            response.getAnalysisReport());
+                            response.getAnalysisReport(),
+                            contextTraceId);
                     response.setArtifactId(artifactId);
                     return response;
                 }
@@ -225,6 +232,7 @@ public class AnalysisService {
             response.setSummary(summary);
             response.setExecutionTime(System.currentTimeMillis() - startTime);
             response.setContextSummary(contextSummary);
+            response.setContextTraceId(contextTraceId);
             response.setRouteDecision(routeDecision);
             response.setAnalysisPlan(analysisPlan);
             response.setExecutionLogs(executionLogs);
@@ -247,7 +255,8 @@ public class AnalysisService {
                     summary,
                     response.getRecommendedChart(),
                     displayData,
-                    response.getAnalysisReport());
+                    response.getAnalysisReport(),
+                    contextTraceId);
             response.setArtifactId(artifactId);
 
             return response;
@@ -376,12 +385,14 @@ public class AnalysisService {
             String summary,
             com.analysis.model.enums.ChartType chartType,
             List<Map<String, Object>> displayData,
-            AnalysisReport analysisReport) {
+            AnalysisReport analysisReport,
+            Long contextTraceId) {
         try {
             AnalysisArtifact artifact = new AnalysisArtifact();
             artifact.setMode("workplace");
             artifact.setGroupId(request.getGroupId());
             artifact.setDatasetId(executionDataset != null ? executionDataset.getId() : null);
+            artifact.setContextTraceId(contextTraceId);
             artifact.setUserQuery(request.getQuery());
             artifact.setGeneratedCodeOrSql(codeOrSql);
             artifact.setSummary(summary);
@@ -404,10 +415,46 @@ public class AnalysisService {
             } else {
                 artifact.setArtifactSchemaVersion(1);
             }
-            return duckDBRepository.saveAnalysisArtifact(artifact);
+            Long artifactId = analysisArtifactStore.saveAnalysisArtifact(artifact);
+            saveArtifactMemoriesSafely(
+                    artifactId,
+                    request,
+                    executionDataset,
+                    codeOrSql,
+                    summary,
+                    analysisReport);
+            return artifactId;
         } catch (Exception e) {
             log.warn("[Analysis] save artifact failed: {}", e.getMessage());
             return null;
+        }
+    }
+
+    private void saveArtifactMemoriesSafely(
+            Long artifactId,
+            AnalysisRequest request,
+            Dataset executionDataset,
+            String codeOrSql,
+            String summary,
+            AnalysisReport analysisReport) {
+        if (artifactId == null) {
+            return;
+        }
+        try {
+            var memories = artifactMemoryExtractor.extract(
+                    artifactId,
+                    request.getGroupId(),
+                    executionDataset != null ? executionDataset.getId() : null,
+                    codeOrSql,
+                    summary,
+                    analysisReport);
+            for (var memory : memories) {
+                Long memoryId = analysisArtifactStore.saveArtifactMemory(memory);
+                memory.setId(memoryId);
+                artifactMemoryVectorService.indexMemoryIfAvailable(memory);
+            }
+        } catch (Exception e) {
+            log.warn("[Analysis] save artifact memories failed: {}", e.getMessage());
         }
     }
 

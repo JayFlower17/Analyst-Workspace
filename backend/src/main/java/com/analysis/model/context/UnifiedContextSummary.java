@@ -12,8 +12,14 @@ public record UnifiedContextSummary(
         int documentTopK,
         int documentCharBudget,
         int documentChunkCount,
+        String memorySource,
+        String memoryStrategy,
+        int memoryTopK,
+        int memoryCharBudget,
+        int memoryCount,
         int structuredPromptChars,
         int relationPromptChars,
         int semanticPromptChars,
-        int documentPromptChars) {
+        int documentPromptChars,
+        int memoryPromptChars) {
 }

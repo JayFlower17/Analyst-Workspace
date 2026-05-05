@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.analysis.model.dto.DatasetInfo;
 import com.analysis.model.entity.ColumnMetadata;
 import com.analysis.model.entity.Dataset;
+import com.analysis.persistence.WorkspaceCatalogStore;
 import com.analysis.repository.DuckDBRepository;
 
 import jakarta.annotation.PostConstruct;
@@ -31,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 public class DatasetService {
 
     private final DuckDBRepository duckDBRepository;
+    private final WorkspaceCatalogStore workspaceCatalogStore;
     private final MetadataService metadataService;
 
     @Value("${upload.path:./uploads}")
@@ -59,7 +61,7 @@ public class DatasetService {
             throw new IllegalArgumentException("文件名不能为空");
         }
 
-        if (groupId != null && duckDBRepository.findDatasetGroupById(groupId) == null) {
+        if (groupId != null && workspaceCatalogStore.findDatasetGroupById(groupId) == null) {
             throw new IllegalArgumentException("工作区不存在: " + groupId);
         }
 
@@ -95,15 +97,15 @@ public class DatasetService {
             dataset.setRowCount(rowCount);
             dataset.setColumnCount(columns.size());
 
-            Long datasetId = duckDBRepository.saveDataset(dataset);
+            Long datasetId = workspaceCatalogStore.saveDataset(dataset);
             dataset.setId(datasetId);
 
             for (ColumnMetadata col : columns) {
                 col.setDatasetId(datasetId);
-                duckDBRepository.saveColumnMetadata(col);
+                workspaceCatalogStore.saveColumnMetadata(col);
             }
 
-            // 🌟 触发 RAG 注入: 将刚才提取到的表结构存入 Milvus 向量库
+            // 触发 RAG 注入: 将刚才提取到的表结构存入 pgvector 向量库
             metadataService.saveMetadataToVectorStore(tableName, datasetId, columns);
 
             if (groupId != null) {
@@ -221,24 +223,24 @@ public class DatasetService {
     }
 
     public List<Dataset> getAllDatasets() throws SQLException {
-        return duckDBRepository.findAllDatasets();
+        return workspaceCatalogStore.findAllDatasets();
     }
 
     public List<Dataset> getAllDatasets(Long groupId) throws SQLException {
-        return duckDBRepository.findAllDatasets(groupId);
+        return workspaceCatalogStore.findAllDatasets(groupId);
     }
 
     public Dataset getDatasetById(Long id) throws SQLException {
-        return duckDBRepository.findDatasetById(id);
+        return workspaceCatalogStore.findDatasetById(id);
     }
 
     public DatasetInfo getDatasetInfo(Long id) throws SQLException {
-        Dataset dataset = duckDBRepository.findDatasetById(id);
+        Dataset dataset = workspaceCatalogStore.findDatasetById(id);
         if (dataset == null) {
             return null;
         }
 
-        List<ColumnMetadata> columns = duckDBRepository.findColumnsByDatasetId(id);
+        List<ColumnMetadata> columns = workspaceCatalogStore.findColumnsByDatasetId(id);
 
         DatasetInfo info = new DatasetInfo();
         info.setId(dataset.getId());
@@ -263,16 +265,21 @@ public class DatasetService {
     }
 
     public void deleteDataset(Long id) throws SQLException {
-        duckDBRepository.deleteDataset(id);
+        Dataset dataset = workspaceCatalogStore.findDatasetById(id);
+        if (dataset == null) {
+            return;
+        }
+        duckDBRepository.dropAnalysisTable(dataset.getTableName());
+        workspaceCatalogStore.deleteDataset(id);
     }
 
     public Dataset updateDatasetDescription(Long datasetId, String descriptionMd) throws SQLException {
-        Dataset existing = duckDBRepository.findDatasetById(datasetId);
+        Dataset existing = workspaceCatalogStore.findDatasetById(datasetId);
         if (existing == null) {
             throw new IllegalArgumentException("数据集不存在");
         }
-        duckDBRepository.updateDatasetDescription(datasetId, descriptionMd);
-        return duckDBRepository.findDatasetById(datasetId);
+        workspaceCatalogStore.updateDatasetDescription(datasetId, descriptionMd);
+        return workspaceCatalogStore.findDatasetById(datasetId);
     }
 
     private String generateTableName(String name) {

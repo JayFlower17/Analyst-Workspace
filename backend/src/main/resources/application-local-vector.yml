@@ -1,7 +1,5 @@
 app:
   vector-store:
     enabled: true
-    host: localhost
-    port: 19530
-    collection-name: analysis_knowledge_final
+    provider: pgvector
     embedding-dimension: 1024

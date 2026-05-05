@@ -112,6 +112,7 @@ export type Artifact = {
   sessionId?: number | null;
   groupId?: number | null;
   datasetId?: number | null;
+  contextTraceId?: number | null;
   userQuery?: string;
   generatedCodeOrSql?: string;
   summary?: string;
@@ -127,6 +128,40 @@ export type Artifact = {
   archivedAt?: string | null;
   deletedAt?: string | null;
   updatedAt?: string | null;
+  createdAt?: string;
+};
+
+export type ArtifactMemory = {
+  id: number;
+  artifactId?: number | null;
+  groupId?: number | null;
+  datasetId?: number | null;
+  memoryType?: string;
+  scope?: string;
+  content?: string;
+  summary?: string;
+  importance?: number | null;
+  confidence?: number | null;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  lastUsedAt?: string | null;
+  useCount?: number | null;
+  retrievalMode?: string | null;
+  retrievalScore?: number | null;
+  retrievalReason?: string | null;
+};
+
+export type ContextTrace = {
+  id: number;
+  groupId?: number | null;
+  sessionId?: number | null;
+  query?: string;
+  selectedSchemaIdsJson?: string;
+  selectedDocumentChunkIdsJson?: string;
+  selectedMemoryIdsJson?: string;
+  filteredItemsJson?: string;
+  packedContext?: string;
   createdAt?: string;
 };
 
@@ -180,6 +215,30 @@ export type RiskNotice = {
   source?: string;
 };
 
+export type UnifiedContextSummary = {
+  groupId?: number;
+  structuredSource?: string;
+  documentSource?: string;
+  semanticSource?: string;
+  datasetCount?: number;
+  relationCount?: number;
+  hasSemanticContext?: boolean;
+  documentStrategy?: string;
+  documentTopK?: number;
+  documentCharBudget?: number;
+  documentChunkCount?: number;
+  memorySource?: string;
+  memoryStrategy?: string;
+  memoryTopK?: number;
+  memoryCharBudget?: number;
+  memoryCount?: number;
+  structuredPromptChars?: number;
+  relationPromptChars?: number;
+  semanticPromptChars?: number;
+  documentPromptChars?: number;
+  memoryPromptChars?: number;
+};
+
 export type ToolExecutionLog = {
   toolType?: string;
   toolName?: string;
@@ -214,6 +273,8 @@ export type ArtifactDetail = Artifact & {
   executionLogs?: ToolExecutionLog[];
   validationReport?: AnalysisValidationReport | null;
   riskNotices?: RiskNotice[];
+  memories?: ArtifactMemory[];
+  contextTrace?: ContextTrace | null;
 };
 
 export type AnalysisResult = {
@@ -226,6 +287,8 @@ export type AnalysisResult = {
   recommendedChart?: string;
   executionTime?: number;
   artifactId?: number;
+  contextTraceId?: number;
+  contextSummary?: UnifiedContextSummary;
   analysisReport?: AnalysisReport;
   validationReport?: AnalysisValidationReport;
   riskNotices?: RiskNotice[];

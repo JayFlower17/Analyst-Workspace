@@ -7,6 +7,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import com.analysis.model.dto.DocumentChunkSearchResult;
+import com.analysis.model.entity.ArtifactMemory;
 import com.analysis.model.entity.Dataset;
 import com.analysis.model.entity.DatasetRelation;
 
@@ -43,8 +44,17 @@ class UnifiedAnalysisContextTest {
                 List.of(chunk),
                 "document prompt");
         SemanticContext semantic = new SemanticContext("business prompt");
+        ArtifactMemory memoryItem = new ArtifactMemory();
+        memoryItem.setMemoryType("ANALYSIS_FINDING");
+        memoryItem.setSummary("prior finding");
+        MemoryContext memory = new MemoryContext(
+                "LEXICAL_RECENT",
+                5,
+                1400,
+                List.of(memoryItem),
+                "memory prompt");
 
-        UnifiedContextSummary summary = new UnifiedAnalysisContext(structured, document, semantic).summary();
+        UnifiedContextSummary summary = new UnifiedAnalysisContext(structured, document, semantic, memory).summary();
 
         assertEquals(7L, summary.groupId());
         assertEquals("WORKSPACE_SCHEMA", summary.structuredSource());
@@ -57,10 +67,16 @@ class UnifiedAnalysisContextTest {
         assertEquals(4, summary.documentTopK());
         assertEquals(2600, summary.documentCharBudget());
         assertEquals(1, summary.documentChunkCount());
+        assertEquals("ARTIFACT_MEMORY", summary.memorySource());
+        assertEquals("LEXICAL_RECENT", summary.memoryStrategy());
+        assertEquals(5, summary.memoryTopK());
+        assertEquals(1400, summary.memoryCharBudget());
+        assertEquals(1, summary.memoryCount());
         assertEquals("schema prompt".length(), summary.structuredPromptChars());
         assertEquals("relation prompt".length(), summary.relationPromptChars());
         assertEquals("business prompt".length(), summary.semanticPromptChars());
         assertEquals("document prompt".length(), summary.documentPromptChars());
+        assertEquals("memory prompt".length(), summary.memoryPromptChars());
     }
 
     @Test
@@ -78,9 +94,15 @@ class UnifiedAnalysisContextTest {
         assertEquals(0, summary.documentTopK());
         assertEquals(0, summary.documentCharBudget());
         assertEquals(0, summary.documentChunkCount());
+        assertEquals("NONE", summary.memorySource());
+        assertEquals("SKIP", summary.memoryStrategy());
+        assertEquals(0, summary.memoryTopK());
+        assertEquals(0, summary.memoryCharBudget());
+        assertEquals(0, summary.memoryCount());
         assertEquals(0, summary.structuredPromptChars());
         assertEquals(0, summary.relationPromptChars());
         assertEquals(0, summary.semanticPromptChars());
         assertEquals(0, summary.documentPromptChars());
+        assertEquals("No artifact memory context available.".length(), summary.memoryPromptChars());
     }
 }

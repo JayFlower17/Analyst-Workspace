@@ -68,6 +68,13 @@ spring.ai.openai.client.read-timeout: 300s
 app:
   jwtSecret: ${JWT_SECRET:ZGV2LW9ubHktand0LXNlY3JldC1jaGFuZ2UtbWUtYmVmb3JlLXByb2Q=}
   jwtExpirationMs: 86400000 # 24 hours
+  vector-store:
+    enabled: false
+    provider: pgvector
+    embedding-dimension: 1024
+  memory:
+    semantic-retrieval:
+      enabled: true
 
 # DuckDB Configuration
 duckdb:

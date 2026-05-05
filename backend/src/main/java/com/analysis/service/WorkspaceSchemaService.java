@@ -12,7 +12,7 @@ import com.analysis.model.dto.DatasetInfo;
 import com.analysis.model.entity.Dataset;
 import com.analysis.model.entity.DatasetGroup;
 import com.analysis.model.entity.DatasetRelation;
-import com.analysis.repository.DuckDBRepository;
+import com.analysis.persistence.WorkspaceCatalogStore;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class WorkspaceSchemaService {
 
-    private final DuckDBRepository duckDBRepository;
+    private final WorkspaceCatalogStore workspaceCatalogStore;
     private final DatasetService datasetService;
 
     public record WorkspaceSchemaContext(
@@ -37,7 +37,7 @@ public class WorkspaceSchemaService {
             throw new IllegalArgumentException("groupId 不能为空");
         }
 
-        List<Dataset> groupDatasets = duckDBRepository.findDatasetsByGroupId(groupId);
+        List<Dataset> groupDatasets = workspaceCatalogStore.findDatasetsByGroupId(groupId);
         if (groupDatasets.isEmpty()) {
             throw new IllegalArgumentException("工作区下没有可分析的数据集");
         }
@@ -52,7 +52,7 @@ public class WorkspaceSchemaService {
             selectedIds.add(ds.getId());
         }
 
-        List<DatasetRelation> allRelations = duckDBRepository.findRelationsByGroupId(groupId);
+        List<DatasetRelation> allRelations = workspaceCatalogStore.findRelationsByGroupId(groupId);
         List<DatasetRelation> selectedRelations = new ArrayList<>();
         for (DatasetRelation relation : allRelations) {
             if (selectedIds.contains(relation.getSourceDatasetId())
@@ -61,7 +61,7 @@ public class WorkspaceSchemaService {
             }
         }
 
-        DatasetGroup group = duckDBRepository.findDatasetGroupById(groupId);
+        DatasetGroup group = workspaceCatalogStore.findDatasetGroupById(groupId);
 
         return new WorkspaceSchemaContext(
                 groupId,

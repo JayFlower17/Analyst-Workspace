@@ -25,7 +25,7 @@ echo 2. 启动Python执行器：
 echo    cd python-executor && python app/main.py
 echo.
 echo 3. 启动前端应用：
-echo    cd frontend && npm run dev
+echo    cd frontend-next && npm run dev
 echo.
 echo 或者直接运行 start.bat 启动所有服务
 echo.

@@ -13,6 +13,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import com.analysis.model.entity.AnalysisArtifact;
+import com.analysis.model.entity.ArtifactMemory;
+import com.analysis.model.entity.ContextTrace;
 
 class DuckDBRepositoryArtifactTest {
 
@@ -29,6 +31,7 @@ class DuckDBRepositoryArtifactTest {
         artifact.setMode("workplace");
         artifact.setGroupId(1L);
         artifact.setDatasetId(2L);
+        artifact.setContextTraceId(3L);
         artifact.setUserQuery("Show orders");
         artifact.setGeneratedCodeOrSql("SELECT * FROM orders");
         artifact.setSummary("Orders summary");
@@ -47,6 +50,7 @@ class DuckDBRepositoryArtifactTest {
         assertNotNull(id);
         assertNotNull(saved);
         assertEquals(2, saved.getArtifactSchemaVersion());
+        assertEquals(3L, saved.getContextTraceId());
         assertEquals("{\"summary\":\"Orders summary\",\"data\":[]}", saved.getAnalysisReportJson());
         assertEquals("{\"datasetCount\":2,\"documentChunkCount\":0}", saved.getEvidenceSummaryJson());
         assertEquals("[{\"toolType\":\"SQL_EXECUTION\",\"success\":true}]", saved.getExecutionLogsJson());
@@ -139,6 +143,91 @@ class DuckDBRepositoryArtifactTest {
         assertEquals(0, repository.findRecentArtifactsByGroupId(3L, 10, "ACTIVE").size());
         assertEquals(1, repository.findRecentArtifactsByGroupId(3L, 10, "DELETED").size());
         assertFalse(repository.updateAnalysisArtifactStatus(9999L, "ARCHIVED"));
+    }
+
+    @Test
+    void savesAndReadsArtifactMemories() throws Exception {
+        DriverManagerDataSource dataSource = dataSource();
+        DuckDBRepository repository = new DuckDBRepository(dataSource);
+        repository.initSchema();
+
+        AnalysisArtifact artifact = new AnalysisArtifact();
+        artifact.setMode("workplace");
+        artifact.setGroupId(5L);
+        artifact.setDatasetId(6L);
+        artifact.setSummary("Memory source");
+        artifact.setResultPreviewJson("[]");
+        artifact.setArtifactSchemaVersion(2);
+
+        Long artifactId = repository.saveAnalysisArtifact(artifact);
+
+        ArtifactMemory memory = new ArtifactMemory();
+        memory.setArtifactId(artifactId);
+        memory.setGroupId(5L);
+        memory.setDatasetId(6L);
+        memory.setMemoryType("ANALYSIS_FINDING");
+        memory.setScope("WORKSPACE_LOCAL");
+        memory.setContent("A durable analysis finding");
+        memory.setSummary("Durable finding");
+        memory.setImportance(0.7);
+        memory.setConfidence(0.8);
+        memory.setStatus("ACTIVE");
+
+        Long memoryId = repository.saveArtifactMemory(memory);
+        var memories = repository.findArtifactMemoriesByArtifactId(artifactId);
+
+        assertNotNull(memoryId);
+        assertEquals(1, memories.size());
+        assertEquals("ANALYSIS_FINDING", memories.get(0).getMemoryType());
+        assertEquals("WORKSPACE_LOCAL", memories.get(0).getScope());
+        assertEquals("Durable finding", memories.get(0).getSummary());
+        assertEquals(0.7, memories.get(0).getImportance());
+        assertEquals(0L, memories.get(0).getUseCount());
+
+        assertEquals(1, repository.recordArtifactMemoryUsage(java.util.List.of(memoryId)));
+        var usedMemories = repository.findArtifactMemoriesByArtifactId(artifactId);
+        assertEquals(1L, usedMemories.get(0).getUseCount());
+        assertNotNull(usedMemories.get(0).getLastUsedAt());
+
+        assertEquals(memoryId, repository.findArtifactMemoryById(memoryId).getId());
+        assertEquals(1, repository.findRecentArtifactMemoriesByGroupId(5L, 10, "ACTIVE").size());
+
+        assertEquals(true, repository.updateArtifactMemoryImportance(memoryId, 0.9));
+        assertEquals(0.9, repository.findArtifactMemoryById(memoryId).getImportance());
+
+        assertEquals(true, repository.updateArtifactMemoryStatus(memoryId, "ARCHIVED"));
+        assertEquals("ARCHIVED", repository.findArtifactMemoryById(memoryId).getStatus());
+        assertEquals(0, repository.findArtifactMemoriesByArtifactId(artifactId).size());
+        assertEquals(1, repository.findRecentArtifactMemoriesByGroupId(5L, 10, "ARCHIVED").size());
+    }
+
+    @Test
+    void savesAndReadsContextTrace() throws Exception {
+        DriverManagerDataSource dataSource = dataSource();
+        DuckDBRepository repository = new DuckDBRepository(dataSource);
+        repository.initSchema();
+
+        ContextTrace trace = new ContextTrace();
+        trace.setGroupId(12L);
+        trace.setQuery("Explain revenue using memory");
+        trace.setSelectedSchemaIdsJson("[1,2]");
+        trace.setSelectedDocumentChunkIdsJson("[\"10:0-1\"]");
+        trace.setSelectedMemoryIdsJson("[7,8]");
+        trace.setFilteredItemsJson("{\"memoryCount\":2}");
+        trace.setPackedContext("[Schema]\norders\n\n[Memories]\nprior revenue finding");
+
+        Long traceId = repository.saveContextTrace(trace);
+        ContextTrace saved = repository.findContextTraceById(traceId);
+
+        assertNotNull(traceId);
+        assertNotNull(saved);
+        assertEquals(12L, saved.getGroupId());
+        assertEquals("Explain revenue using memory", saved.getQuery());
+        assertEquals("[1,2]", saved.getSelectedSchemaIdsJson());
+        assertEquals("[\"10:0-1\"]", saved.getSelectedDocumentChunkIdsJson());
+        assertEquals("[7,8]", saved.getSelectedMemoryIdsJson());
+        assertEquals("{\"memoryCount\":2}", saved.getFilteredItemsJson());
+        assertEquals("[Schema]\norders\n\n[Memories]\nprior revenue finding", saved.getPackedContext());
     }
 
     private DriverManagerDataSource dataSource() {

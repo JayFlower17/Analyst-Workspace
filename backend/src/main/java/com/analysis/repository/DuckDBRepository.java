@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import javax.sql.DataSource;
 
@@ -25,6 +26,8 @@ import com.analysis.model.entity.DatasetRelation;
 import com.analysis.model.entity.DocumentAsset;
 import com.analysis.model.entity.DocumentChunk;
 import com.analysis.model.entity.AnalysisArtifact;
+import com.analysis.model.entity.ArtifactMemory;
+import com.analysis.model.entity.ContextTrace;
 import com.analysis.model.entity.ChatMessage;
 import com.analysis.model.entity.ChatSession;
 
@@ -34,6 +37,8 @@ import lombok.extern.slf4j.Slf4j;
 @Repository
 //负责调用duckdb，
 public class DuckDBRepository {
+
+    private static final Pattern SAFE_IDENTIFIER_PATTERN = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
 
     private final DataSource dataSource;
 
@@ -145,6 +150,7 @@ public class DuckDBRepository {
                             session_id INTEGER,
                             group_id INTEGER,
                             dataset_id INTEGER,
+                            context_trace_id INTEGER,
                             user_query VARCHAR,
                             generated_code_or_sql VARCHAR,
                             summary VARCHAR,
@@ -164,6 +170,40 @@ public class DuckDBRepository {
                         )
                     """);
             ensureAnalysisArtifactPhase6Columns(connection, stmt);
+            stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS artifact_memories (
+                            id INTEGER PRIMARY KEY,
+                            artifact_id INTEGER,
+                            group_id INTEGER,
+                            dataset_id INTEGER,
+                            memory_type VARCHAR,
+                            scope VARCHAR,
+                            content VARCHAR,
+                            summary VARCHAR,
+                            importance DOUBLE,
+                            confidence DOUBLE,
+                            status VARCHAR DEFAULT 'ACTIVE',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            last_used_at TIMESTAMP,
+                            use_count BIGINT DEFAULT 0
+                        )
+                    """);
+            ensureArtifactMemoryPhase1Columns(connection, stmt);
+            stmt.execute("""
+                        CREATE TABLE IF NOT EXISTS context_traces (
+                            id INTEGER PRIMARY KEY,
+                            group_id INTEGER,
+                            session_id INTEGER,
+                            query VARCHAR,
+                            selected_schema_ids VARCHAR,
+                            selected_document_chunk_ids VARCHAR,
+                            selected_memory_ids VARCHAR,
+                            filtered_items_json VARCHAR,
+                            packed_context VARCHAR,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """);
             stmt.execute("""
                         CREATE TABLE IF NOT EXISTS meta_documents (
                             id INTEGER PRIMARY KEY,
@@ -202,6 +242,8 @@ public class DuckDBRepository {
             stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_chat_message START 1");
             stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_chat_session_dataset START 1");
             stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_analysis_artifact START 1");
+            stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_artifact_memory START 1");
+            stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_context_trace START 1");
             stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_document_asset START 1");
             stmt.execute("CREATE SEQUENCE IF NOT EXISTS seq_document_chunk START 1");
         }
@@ -268,10 +310,18 @@ public class DuckDBRepository {
         ensureColumn(connection, stmt, "analysis_artifacts", "execution_logs_json", "VARCHAR");
         ensureColumn(connection, stmt, "analysis_artifacts", "validation_report_json", "VARCHAR");
         ensureColumn(connection, stmt, "analysis_artifacts", "risk_notices_json", "VARCHAR");
+        ensureColumn(connection, stmt, "analysis_artifacts", "context_trace_id", "INTEGER");
         ensureColumn(connection, stmt, "analysis_artifacts", "artifact_status", "VARCHAR DEFAULT 'ACTIVE'");
         ensureColumn(connection, stmt, "analysis_artifacts", "archived_at", "TIMESTAMP");
         ensureColumn(connection, stmt, "analysis_artifacts", "deleted_at", "TIMESTAMP");
         ensureColumn(connection, stmt, "analysis_artifacts", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+    }
+
+    private void ensureArtifactMemoryPhase1Columns(Connection connection, Statement stmt) throws SQLException {
+        ensureColumn(connection, stmt, "artifact_memories", "status", "VARCHAR DEFAULT 'ACTIVE'");
+        ensureColumn(connection, stmt, "artifact_memories", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+        ensureColumn(connection, stmt, "artifact_memories", "last_used_at", "TIMESTAMP");
+        ensureColumn(connection, stmt, "artifact_memories", "use_count", "BIGINT DEFAULT 0");
     }
 
     private void ensureColumn(
@@ -776,13 +826,13 @@ public class DuckDBRepository {
     public Long saveAnalysisArtifact(AnalysisArtifact artifact) throws SQLException {
         String sql = """
                 INSERT INTO analysis_artifacts (
-                    id, mode, session_id, group_id, dataset_id, user_query,
+                    id, mode, session_id, group_id, dataset_id, context_trace_id, user_query,
                     generated_code_or_sql, summary, chart_type, result_preview_json,
                     artifact_schema_version, analysis_report_json, evidence_summary_json,
                     execution_logs_json, validation_report_json, risk_notices_json,
                     artifact_status, archived_at, deleted_at, updated_at, created_at
                 )
-                VALUES (nextval('seq_analysis_artifact'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                VALUES (nextval('seq_analysis_artifact'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 RETURNING id
                 """;
         try (Connection connection = dataSource.getConnection();
@@ -803,36 +853,41 @@ public class DuckDBRepository {
             } else {
                 stmt.setNull(4, Types.BIGINT);
             }
-            stmt.setString(5, artifact.getUserQuery());
-            stmt.setString(6, artifact.getGeneratedCodeOrSql());
-            stmt.setString(7, artifact.getSummary());
-            stmt.setString(8, artifact.getChartType());
-            stmt.setString(9, artifact.getResultPreviewJson());
+            if (artifact.getContextTraceId() != null) {
+                stmt.setLong(5, artifact.getContextTraceId());
+            } else {
+                stmt.setNull(5, Types.BIGINT);
+            }
+            stmt.setString(6, artifact.getUserQuery());
+            stmt.setString(7, artifact.getGeneratedCodeOrSql());
+            stmt.setString(8, artifact.getSummary());
+            stmt.setString(9, artifact.getChartType());
+            stmt.setString(10, artifact.getResultPreviewJson());
             if (artifact.getArtifactSchemaVersion() != null) {
-                stmt.setInt(10, artifact.getArtifactSchemaVersion());
+                stmt.setInt(11, artifact.getArtifactSchemaVersion());
             } else {
-                stmt.setNull(10, Types.INTEGER);
+                stmt.setNull(11, Types.INTEGER);
             }
-            stmt.setString(11, artifact.getAnalysisReportJson());
-            stmt.setString(12, artifact.getEvidenceSummaryJson());
-            stmt.setString(13, artifact.getExecutionLogsJson());
-            stmt.setString(14, artifact.getValidationReportJson());
-            stmt.setString(15, artifact.getRiskNoticesJson());
-            stmt.setString(16, defaultArtifactStatus(artifact.getArtifactStatus()));
+            stmt.setString(12, artifact.getAnalysisReportJson());
+            stmt.setString(13, artifact.getEvidenceSummaryJson());
+            stmt.setString(14, artifact.getExecutionLogsJson());
+            stmt.setString(15, artifact.getValidationReportJson());
+            stmt.setString(16, artifact.getRiskNoticesJson());
+            stmt.setString(17, defaultArtifactStatus(artifact.getArtifactStatus()));
             if (artifact.getArchivedAt() != null) {
-                stmt.setTimestamp(17, Timestamp.valueOf(artifact.getArchivedAt()));
-            } else {
-                stmt.setNull(17, Types.TIMESTAMP);
-            }
-            if (artifact.getDeletedAt() != null) {
-                stmt.setTimestamp(18, Timestamp.valueOf(artifact.getDeletedAt()));
+                stmt.setTimestamp(18, Timestamp.valueOf(artifact.getArchivedAt()));
             } else {
                 stmt.setNull(18, Types.TIMESTAMP);
             }
-            if (artifact.getUpdatedAt() != null) {
-                stmt.setTimestamp(19, Timestamp.valueOf(artifact.getUpdatedAt()));
+            if (artifact.getDeletedAt() != null) {
+                stmt.setTimestamp(19, Timestamp.valueOf(artifact.getDeletedAt()));
             } else {
-                stmt.setTimestamp(19, Timestamp.valueOf(java.time.LocalDateTime.now()));
+                stmt.setNull(19, Types.TIMESTAMP);
+            }
+            if (artifact.getUpdatedAt() != null) {
+                stmt.setTimestamp(20, Timestamp.valueOf(artifact.getUpdatedAt()));
+            } else {
+                stmt.setTimestamp(20, Timestamp.valueOf(java.time.LocalDateTime.now()));
             }
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -891,6 +946,295 @@ public class DuckDBRepository {
             }
         }
         return null;
+    }
+
+    public Long saveArtifactMemory(ArtifactMemory memory) throws SQLException {
+        String sql = """
+                INSERT INTO artifact_memories (
+                    id, artifact_id, group_id, dataset_id, memory_type, scope,
+                    content, summary, importance, confidence, status,
+                    created_at, updated_at, last_used_at, use_count
+                )
+                VALUES (nextval('seq_artifact_memory'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?)
+                RETURNING id
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            if (memory.getArtifactId() != null) {
+                stmt.setLong(1, memory.getArtifactId());
+            } else {
+                stmt.setNull(1, Types.BIGINT);
+            }
+            if (memory.getGroupId() != null) {
+                stmt.setLong(2, memory.getGroupId());
+            } else {
+                stmt.setNull(2, Types.BIGINT);
+            }
+            if (memory.getDatasetId() != null) {
+                stmt.setLong(3, memory.getDatasetId());
+            } else {
+                stmt.setNull(3, Types.BIGINT);
+            }
+            stmt.setString(4, memory.getMemoryType());
+            stmt.setString(5, memory.getScope());
+            stmt.setString(6, memory.getContent());
+            stmt.setString(7, memory.getSummary());
+            if (memory.getImportance() != null) {
+                stmt.setDouble(8, memory.getImportance());
+            } else {
+                stmt.setNull(8, Types.DOUBLE);
+            }
+            if (memory.getConfidence() != null) {
+                stmt.setDouble(9, memory.getConfidence());
+            } else {
+                stmt.setNull(9, Types.DOUBLE);
+            }
+            stmt.setString(10, defaultMemoryStatus(memory.getStatus()));
+            if (memory.getLastUsedAt() != null) {
+                stmt.setTimestamp(11, Timestamp.valueOf(memory.getLastUsedAt()));
+            } else {
+                stmt.setNull(11, Types.TIMESTAMP);
+            }
+            stmt.setLong(12, memory.getUseCount() != null ? memory.getUseCount() : 0L);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
+        }
+        return null;
+    }
+
+    public List<ArtifactMemory> findArtifactMemoriesByArtifactId(Long artifactId) throws SQLException {
+        List<ArtifactMemory> memories = new ArrayList<>();
+        String sql = """
+                SELECT *
+                FROM artifact_memories
+                WHERE artifact_id = ?
+                  AND COALESCE(status, 'ACTIVE') = 'ACTIVE'
+                ORDER BY importance DESC NULLS LAST, created_at DESC, id DESC
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, artifactId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    memories.add(mapArtifactMemory(rs));
+                }
+            }
+        }
+        return memories;
+    }
+
+    public ArtifactMemory findArtifactMemoryById(Long id) throws SQLException {
+        String sql = "SELECT * FROM artifact_memories WHERE id = ?";
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapArtifactMemory(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    public List<ArtifactMemory> findActiveArtifactMemoriesByGroupId(Long groupId, int limit) throws SQLException {
+        List<ArtifactMemory> memories = new ArrayList<>();
+        String sql = """
+                SELECT *
+                FROM artifact_memories
+                WHERE group_id = ?
+                  AND COALESCE(status, 'ACTIVE') = 'ACTIVE'
+                ORDER BY importance DESC NULLS LAST, updated_at DESC, id DESC
+                LIMIT ?
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, groupId);
+            stmt.setInt(2, Math.max(1, limit));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    memories.add(mapArtifactMemory(rs));
+                }
+            }
+        }
+        return memories;
+    }
+
+    public List<ArtifactMemory> findRecentArtifactMemoriesByGroupId(
+            Long groupId,
+            int limit,
+            String status) throws SQLException {
+        List<ArtifactMemory> memories = new ArrayList<>();
+        String sql = """
+                SELECT *
+                FROM artifact_memories
+                WHERE group_id = ?
+                  AND COALESCE(status, 'ACTIVE') = ?
+                ORDER BY last_used_at DESC NULLS LAST, importance DESC NULLS LAST, updated_at DESC, id DESC
+                LIMIT ?
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, groupId);
+            stmt.setString(2, defaultMemoryStatus(status));
+            stmt.setInt(3, Math.max(1, limit));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    memories.add(mapArtifactMemory(rs));
+                }
+            }
+        }
+        return memories;
+    }
+
+    public int recordArtifactMemoryUsage(List<Long> memoryIds) throws SQLException {
+        if (memoryIds == null || memoryIds.isEmpty()) {
+            return 0;
+        }
+
+        List<Long> ids = memoryIds.stream()
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        if (ids.isEmpty()) {
+            return 0;
+        }
+
+        String sql = """
+                UPDATE artifact_memories
+                SET use_count = COALESCE(use_count, 0) + 1,
+                    last_used_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                  AND COALESCE(status, 'ACTIVE') = 'ACTIVE'
+                """;
+        int updated = 0;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            for (Long id : ids) {
+                stmt.setLong(1, id);
+                stmt.addBatch();
+            }
+            int[] counts = stmt.executeBatch();
+            for (int count : counts) {
+                if (count > 0) {
+                    updated += count;
+                } else if (count == Statement.SUCCESS_NO_INFO) {
+                    updated += 1;
+                }
+            }
+        }
+        return updated;
+    }
+
+    public boolean updateArtifactMemoryStatus(Long id, String status) throws SQLException {
+        String sql = """
+                UPDATE artifact_memories
+                SET status = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setString(1, defaultMemoryStatus(status));
+            stmt.setLong(2, id);
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
+    public boolean updateArtifactMemoryImportance(Long id, Double importance) throws SQLException {
+        String sql = """
+                UPDATE artifact_memories
+                SET importance = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            if (importance != null) {
+                stmt.setDouble(1, importance);
+            } else {
+                stmt.setNull(1, Types.DOUBLE);
+            }
+            stmt.setLong(2, id);
+            return stmt.executeUpdate() > 0;
+        }
+    }
+
+    public Long saveContextTrace(ContextTrace trace) throws SQLException {
+        String sql = """
+                INSERT INTO context_traces (
+                    id, group_id, session_id, query, selected_schema_ids,
+                    selected_document_chunk_ids, selected_memory_ids,
+                    filtered_items_json, packed_context, created_at
+                )
+                VALUES (nextval('seq_context_trace'), ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                RETURNING id
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            if (trace.getGroupId() != null) {
+                stmt.setLong(1, trace.getGroupId());
+            } else {
+                stmt.setNull(1, Types.BIGINT);
+            }
+            if (trace.getSessionId() != null) {
+                stmt.setLong(2, trace.getSessionId());
+            } else {
+                stmt.setNull(2, Types.BIGINT);
+            }
+            stmt.setString(3, trace.getQuery());
+            stmt.setString(4, trace.getSelectedSchemaIdsJson());
+            stmt.setString(5, trace.getSelectedDocumentChunkIdsJson());
+            stmt.setString(6, trace.getSelectedMemoryIdsJson());
+            stmt.setString(7, trace.getFilteredItemsJson());
+            stmt.setString(8, trace.getPackedContext());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
+        }
+        return null;
+    }
+
+    public ContextTrace findContextTraceById(Long id) throws SQLException {
+        String sql = "SELECT * FROM context_traces WHERE id = ?";
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapContextTrace(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    public List<ContextTrace> findRecentContextTracesByGroupId(Long groupId, int limit) throws SQLException {
+        List<ContextTrace> traces = new ArrayList<>();
+        String sql = """
+                SELECT *
+                FROM context_traces
+                WHERE group_id = ?
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?
+                """;
+        try (Connection connection = dataSource.getConnection();
+                PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setLong(1, groupId);
+            stmt.setInt(2, Math.max(1, limit));
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    traces.add(mapContextTrace(rs));
+                }
+            }
+        }
+        return traces;
     }
 
     public Long saveDocumentAsset(DocumentAsset asset) throws SQLException {
@@ -1193,34 +1537,45 @@ public class DuckDBRepository {
     public void deleteDataset(Long id) throws SQLException {
         Dataset dataset = findDatasetById(id);
         if (dataset != null) {
-            try (Connection connection = dataSource.getConnection()) {
-                // 开启事务，保证删除动作的要么全成功，要么全失败
-                connection.setAutoCommit(false);
-                try {
-                    try (Statement stmt = connection.createStatement()) {
-                        stmt.execute("DROP TABLE IF EXISTS " + dataset.getTableName());
-                    }
-                    try (PreparedStatement stmt = connection.prepareStatement("DELETE FROM meta_columns WHERE dataset_id = ?")) {
-                        stmt.setLong(1, id);
-                        stmt.executeUpdate();
-                    }
-                    try (PreparedStatement stmt = connection.prepareStatement(
-                            "DELETE FROM meta_dataset_relations WHERE source_dataset_id = ? OR target_dataset_id = ?")) {
-                        stmt.setLong(1, id);
-                        stmt.setLong(2, id);
-                        stmt.executeUpdate();
-                    }
-                    try (PreparedStatement stmt = connection.prepareStatement("DELETE FROM meta_datasets WHERE id = ?")) {
-                        stmt.setLong(1, id);
-                        stmt.executeUpdate();
-                    }
-                    connection.commit();
-                } catch (SQLException e) {
-                    connection.rollback();
-                    throw e;
-                } finally {
-                    connection.setAutoCommit(true);
+            dropAnalysisTable(dataset.getTableName());
+            deleteDatasetMetadata(id);
+        }
+    }
+
+    public void dropAnalysisTable(String tableName) throws SQLException {
+        if (tableName == null || !SAFE_IDENTIFIER_PATTERN.matcher(tableName).matches()) {
+            throw new SQLException("Unsafe DuckDB table name: " + tableName);
+        }
+        try (Connection connection = dataSource.getConnection();
+             Statement stmt = connection.createStatement()) {
+            stmt.execute("DROP TABLE IF EXISTS " + tableName);
+        }
+    }
+
+    public void deleteDatasetMetadata(Long id) throws SQLException {
+        try (Connection connection = dataSource.getConnection()) {
+            connection.setAutoCommit(false);
+            try {
+                try (PreparedStatement stmt = connection.prepareStatement("DELETE FROM meta_columns WHERE dataset_id = ?")) {
+                    stmt.setLong(1, id);
+                    stmt.executeUpdate();
                 }
+                try (PreparedStatement stmt = connection.prepareStatement(
+                        "DELETE FROM meta_dataset_relations WHERE source_dataset_id = ? OR target_dataset_id = ?")) {
+                    stmt.setLong(1, id);
+                    stmt.setLong(2, id);
+                    stmt.executeUpdate();
+                }
+                try (PreparedStatement stmt = connection.prepareStatement("DELETE FROM meta_datasets WHERE id = ?")) {
+                    stmt.setLong(1, id);
+                    stmt.executeUpdate();
+                }
+                connection.commit();
+            } catch (SQLException e) {
+                connection.rollback();
+                throw e;
+            } finally {
+                connection.setAutoCommit(true);
             }
         }
     }
@@ -1365,6 +1720,7 @@ public class DuckDBRepository {
         artifact.setSessionId(getNullableLong(rs, "session_id"));
         artifact.setGroupId(getNullableLong(rs, "group_id"));
         artifact.setDatasetId(getNullableLong(rs, "dataset_id"));
+        artifact.setContextTraceId(getNullableLong(rs, "context_trace_id"));
         artifact.setUserQuery(rs.getString("user_query"));
         artifact.setGeneratedCodeOrSql(rs.getString("generated_code_or_sql"));
         artifact.setSummary(rs.getString("summary"));
@@ -1405,6 +1761,64 @@ public class DuckDBRepository {
             case "ACTIVE", "ARCHIVED", "DELETED" -> normalizedStatus;
             default -> "ACTIVE";
         };
+    }
+
+    private String defaultMemoryStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return "ACTIVE";
+        }
+        String normalizedStatus = status.trim().toUpperCase();
+        return switch (normalizedStatus) {
+            case "ACTIVE", "ARCHIVED", "SUPERSEDED", "DELETED" -> normalizedStatus;
+            default -> "ACTIVE";
+        };
+    }
+
+    private ArtifactMemory mapArtifactMemory(ResultSet rs) throws SQLException {
+        ArtifactMemory memory = new ArtifactMemory();
+        memory.setId(rs.getLong("id"));
+        memory.setArtifactId(getNullableLong(rs, "artifact_id"));
+        memory.setGroupId(getNullableLong(rs, "group_id"));
+        memory.setDatasetId(getNullableLong(rs, "dataset_id"));
+        memory.setMemoryType(rs.getString("memory_type"));
+        memory.setScope(rs.getString("scope"));
+        memory.setContent(rs.getString("content"));
+        memory.setSummary(rs.getString("summary"));
+        memory.setImportance(getNullableDouble(rs, "importance"));
+        memory.setConfidence(getNullableDouble(rs, "confidence"));
+        memory.setStatus(defaultMemoryStatus(rs.getString("status")));
+        Timestamp createdAt = rs.getTimestamp("created_at");
+        if (createdAt != null) {
+            memory.setCreatedAt(createdAt.toLocalDateTime());
+        }
+        Timestamp updatedAt = rs.getTimestamp("updated_at");
+        if (updatedAt != null) {
+            memory.setUpdatedAt(updatedAt.toLocalDateTime());
+        }
+        Timestamp lastUsedAt = rs.getTimestamp("last_used_at");
+        if (lastUsedAt != null) {
+            memory.setLastUsedAt(lastUsedAt.toLocalDateTime());
+        }
+        memory.setUseCount(getNullableLong(rs, "use_count"));
+        return memory;
+    }
+
+    private ContextTrace mapContextTrace(ResultSet rs) throws SQLException {
+        ContextTrace trace = new ContextTrace();
+        trace.setId(rs.getLong("id"));
+        trace.setGroupId(getNullableLong(rs, "group_id"));
+        trace.setSessionId(getNullableLong(rs, "session_id"));
+        trace.setQuery(rs.getString("query"));
+        trace.setSelectedSchemaIdsJson(rs.getString("selected_schema_ids"));
+        trace.setSelectedDocumentChunkIdsJson(rs.getString("selected_document_chunk_ids"));
+        trace.setSelectedMemoryIdsJson(rs.getString("selected_memory_ids"));
+        trace.setFilteredItemsJson(rs.getString("filtered_items_json"));
+        trace.setPackedContext(rs.getString("packed_context"));
+        Timestamp createdAt = rs.getTimestamp("created_at");
+        if (createdAt != null) {
+            trace.setCreatedAt(createdAt.toLocalDateTime());
+        }
+        return trace;
     }
 
     private Long getNullableLong(ResultSet rs, String column) throws SQLException {

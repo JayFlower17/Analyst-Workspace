@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.analysis.model.entity.ColumnMetadata;
+import com.analysis.persistence.WorkspaceCatalogStore;
 import com.analysis.repository.DuckDBRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -22,8 +23,9 @@ import lombok.extern.slf4j.Slf4j;
 public class MetadataService {
 
     private final DuckDBRepository duckDBRepository;
+    private final WorkspaceCatalogStore workspaceCatalogStore;
     private final ObjectProvider<org.springframework.ai.vectorstore.VectorStore> vectorStoreProvider;
-    @Value("${app.vector-store.enabled:true}")
+    @Value("${app.vector-store.enabled:false}")
     private boolean vectorStoreEnabled;
 
     /**
@@ -70,7 +72,7 @@ public class MetadataService {
         if (!documents.isEmpty()) {
             log.info("Saving {} schema documents to Vector Store for table: {}", documents.size(), tableName);
             vectorStore.add(documents);// 把向量存入向量数据库，这里就是调用embedding大模型，将description字符串转换为一堆密集浮点数
-            // 然后将这段文本、它的metadata字典以及那一堆浮点数写入到milvus中
+            // 然后将这段文本、metadata 字典以及浮点向量写入 pgvector 中
         }
     }
 
@@ -133,7 +135,7 @@ public class MetadataService {
     // 这一部分的核心作用是将指定数据集的表字段信息，拼接城一个标准的Markdown格式的表格字符串，这个字符串会直接注入LLM的prompt中
     // 这种适用于表格内容比较少的情况，如果表格内容太多，会超过大模型的token限制
     public String generateMetadataPrompt(Long datasetId) throws SQLException {
-        List<ColumnMetadata> columns = duckDBRepository.findColumnsByDatasetId(datasetId);
+        List<ColumnMetadata> columns = workspaceCatalogStore.findColumnsByDatasetId(datasetId);
 
         StringBuilder sb = new StringBuilder();
         sb.append("表结构信息:\n");

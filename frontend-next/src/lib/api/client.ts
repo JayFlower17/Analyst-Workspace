@@ -4,6 +4,8 @@ import type {
   AnalysisResult,
   Artifact,
   ArtifactDetail,
+  ArtifactMemory,
+  ContextTrace,
   AuthResponse,
   ApiEnvelope,
   ChatMessage,
@@ -298,5 +300,58 @@ export const artifactApi = {
   },
   delete(id: number) {
     return request<ApiEnvelope<ArtifactDetail>>(`/artifacts/${id}`, { method: "DELETE" });
+  },
+};
+
+export const contextTraceApi = {
+  detail(id: number) {
+    return request<ApiEnvelope<ContextTrace>>(`/context-traces/${id}`);
+  },
+  recent(groupId: number, limit = 5) {
+    const params = new URLSearchParams({
+      groupId: String(groupId),
+      limit: String(limit),
+    });
+    return request<ApiEnvelope<ContextTrace[]>>(`/context-traces/recent?${params.toString()}`);
+  },
+};
+
+export const artifactMemoryApi = {
+  recent({
+    groupId,
+    limit = 10,
+    status = "ACTIVE",
+  }: {
+    groupId: number;
+    limit?: number;
+    status?: "ACTIVE" | "ARCHIVED" | "SUPERSEDED" | "DELETED";
+  }) {
+    const params = new URLSearchParams({
+      groupId: String(groupId),
+      limit: String(limit),
+      status,
+    });
+    return request<ApiEnvelope<ArtifactMemory[]>>(`/artifact-memories/recent?${params.toString()}`);
+  },
+  detail(id: number) {
+    return request<ApiEnvelope<ArtifactMemory>>(`/artifact-memories/${id}`);
+  },
+  archive(id: number) {
+    return request<ApiEnvelope<ArtifactMemory>>(`/artifact-memories/${id}/archive`, { method: "PATCH" });
+  },
+  restore(id: number) {
+    return request<ApiEnvelope<ArtifactMemory>>(`/artifact-memories/${id}/restore`, { method: "PATCH" });
+  },
+  supersede(id: number) {
+    return request<ApiEnvelope<ArtifactMemory>>(`/artifact-memories/${id}/supersede`, { method: "PATCH" });
+  },
+  updateImportance(id: number, importance: number) {
+    const params = new URLSearchParams({ importance: String(importance) });
+    return request<ApiEnvelope<ArtifactMemory>>(`/artifact-memories/${id}/importance?${params.toString()}`, {
+      method: "PATCH",
+    });
+  },
+  delete(id: number) {
+    return request<ApiEnvelope<ArtifactMemory>>(`/artifact-memories/${id}`, { method: "DELETE" });
   },
 };

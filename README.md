@@ -14,12 +14,11 @@ The long-term goal of this project is to support:
 
 ## Current Status
 
-The project is currently in a transition phase:
+The project is currently in a PostgreSQL/pgvector optimization and delivery phase:
 
-- `frontend-next/` is the future frontend mainline
-- `frontend/` is still kept as a migration-period fallback
+- `frontend-next/` is the only frontend mainline
 - the current stable core is multi-dataset structured analysis
-- unstructured document ingestion and retrieval have started, and minimal document-aware workspace analysis is now connected
+- unstructured document ingestion, retrieval, artifact memory, and context trace are connected
 
 ---
 
@@ -27,7 +26,6 @@ The project is currently in a transition phase:
 
 ```text
 frontend-next/    Next.js frontend mainline
-frontend/         Legacy Vue frontend
 backend/          Spring Boot backend
 python-executor/  FastAPI Python execution service
 harness/          Minimum benchmark and evaluation harness
@@ -113,7 +111,7 @@ Start here:
 - [docs/README.md](docs/README.md)
 - [docs/phase1-closeout.md](docs/phase1-closeout.md)
 - [docs/phase2-kickoff.md](docs/phase2-kickoff.md)
-- [docs/frontend-next-migration.md](docs/frontend-next-migration.md)
+- [docs/frontend-next-migration.md](docs/frontend-next-migration.md) historical migration notes
 - [docs/task-roadmap.md](docs/task-roadmap.md)
 
 Module docs:

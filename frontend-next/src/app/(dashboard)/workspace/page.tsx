@@ -14,6 +14,7 @@ import {
   GitBranch,
   ListChecks,
   Loader2,
+  Minus,
   PencilLine,
   Plus,
   RefreshCw,
@@ -25,13 +26,15 @@ import {
   WandSparkles,
 } from "lucide-react";
 import { toast } from "sonner";
-import { artifactApi, datasetApi, documentApi, workplaceApi } from "@/lib/api/client";
+import { artifactApi, artifactMemoryApi, datasetApi, documentApi, workplaceApi } from "@/lib/api/client";
 import type {
   AnalysisEvidenceSummary,
   AnalysisResult,
   AnalysisValidationReport,
   Artifact,
   ArtifactDetail,
+  ArtifactMemory,
+  ContextTrace,
   Dataset,
   DatasetColumnInfo,
   DatasetRelation,
@@ -86,8 +89,27 @@ type AnalysisProcessPanelProps = {
   riskNotices?: RiskNotice[];
 };
 
+type ContextTracePanelProps = {
+  trace?: ContextTrace | null;
+};
+
+type TraceMemorySelection = {
+  id?: number;
+  memoryType?: string;
+  scope?: string;
+  retrievalMode?: string;
+  retrievalScore?: number;
+  retrievalReason?: string;
+  importance?: number;
+  confidence?: number;
+  summary?: string;
+};
+
 type ArtifactSchemaFilter = "all" | "phase6" | "legacy";
 type ArtifactStatusFilter = "ACTIVE" | "ARCHIVED" | "DELETED";
+type MemoryStatusFilter = "ACTIVE" | "ARCHIVED" | "SUPERSEDED" | "DELETED";
+type AssetView = "tables" | "documents" | "artifacts" | "memories";
+type MemoryAction = "archive" | "restore" | "supersede" | "delete";
 
 type ArtifactFilterControlsProps = {
   search: string;
@@ -110,11 +132,63 @@ type ArtifactCardGridProps = {
   onOpenDetail: (artifact: Artifact) => void;
 };
 
+type MemoryManagementPanelProps = {
+  memories: ArtifactMemory[];
+  filteredMemories: ArtifactMemory[];
+  search: string;
+  statusFilter: MemoryStatusFilter;
+  refreshing: boolean;
+  actionLoadingId: number | null;
+  disabled?: boolean;
+  compact?: boolean;
+  onSearchChange: (value: string) => void;
+  onStatusFilterChange: (value: MemoryStatusFilter) => void;
+  onRefresh: () => void;
+  onStatusAction: (memory: ArtifactMemory, action: MemoryAction) => void;
+  onImportanceChange: (memory: ArtifactMemory, delta: number) => void;
+};
+
 function parseArtifactRows(resultPreviewJson?: string): Record<string, unknown>[] {
   if (!resultPreviewJson) return [];
   try {
     const parsed = JSON.parse(resultPreviewJson) as unknown;
     return Array.isArray(parsed) ? (parsed as Record<string, unknown>[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseJsonList(value?: string): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((item) => String(item));
+  } catch {
+    return [];
+  }
+}
+
+function parseTraceMemorySelections(value?: string): TraceMemorySelection[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!parsed || typeof parsed !== "object" || !("selectedMemories" in parsed)) return [];
+    const selectedMemories = (parsed as { selectedMemories?: unknown }).selectedMemories;
+    if (!Array.isArray(selectedMemories)) return [];
+    return selectedMemories
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+      .map((item) => ({
+        id: typeof item.id === "number" ? item.id : undefined,
+        memoryType: typeof item.memoryType === "string" ? item.memoryType : undefined,
+        scope: typeof item.scope === "string" ? item.scope : undefined,
+        retrievalMode: typeof item.retrievalMode === "string" ? item.retrievalMode : undefined,
+        retrievalScore: typeof item.retrievalScore === "number" ? item.retrievalScore : undefined,
+        retrievalReason: typeof item.retrievalReason === "string" ? item.retrievalReason : undefined,
+        importance: typeof item.importance === "number" ? item.importance : undefined,
+        confidence: typeof item.confidence === "number" ? item.confidence : undefined,
+        summary: typeof item.summary === "string" ? item.summary : undefined,
+      }));
   } catch {
     return [];
   }
@@ -142,6 +216,21 @@ function getArtifactStatusLabel(status?: string | null) {
   if (status === "ARCHIVED") return "已归档";
   if (status === "DELETED") return "已删除";
   return "活跃";
+}
+
+function getMemoryStatusLabel(status?: string | null) {
+  if (status === "ARCHIVED") return "已归档";
+  if (status === "SUPERSEDED") return "已替代";
+  if (status === "DELETED") return "已删除";
+  return "活跃";
+}
+
+function formatMemoryScore(value?: number | null) {
+  return value == null ? "-" : value.toFixed(2);
+}
+
+function clampMemoryImportance(value: number) {
+  return Math.max(0, Math.min(1, Number(value.toFixed(2))));
 }
 
 function ArtifactFilterControls({
@@ -248,6 +337,193 @@ function ArtifactCardGrid({ artifacts, emptyText, gridClassName, onOpenDetail }:
           </div>
         </button>
       ))}
+    </div>
+  );
+}
+
+function MemoryManagementPanel({
+  memories,
+  filteredMemories,
+  search,
+  statusFilter,
+  refreshing,
+  actionLoadingId,
+  disabled,
+  compact,
+  onSearchChange,
+  onStatusFilterChange,
+  onRefresh,
+  onStatusAction,
+  onImportanceChange,
+}: MemoryManagementPanelProps) {
+  const statusFilters: { value: MemoryStatusFilter; label: string }[] = [
+    { value: "ACTIVE", label: "活跃" },
+    { value: "ARCHIVED", label: "归档" },
+    { value: "SUPERSEDED", label: "替代" },
+    { value: "DELETED", label: "删除" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--color-text-tertiary)]" />
+            <Input
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder="搜索记忆摘要、类型或内容"
+              className="pl-9"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {statusFilters.map((filter) => (
+              <button
+                key={filter.value}
+                type="button"
+                data-active={statusFilter === filter.value}
+                className="pill-toggle"
+                onClick={() => onStatusFilterChange(filter.value)}
+              >
+                {filter.label}
+              </button>
+            ))}
+            <Button variant="outline" size="sm" onClick={onRefresh} disabled={disabled || refreshing}>
+              {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              刷新
+            </Button>
+          </div>
+        </div>
+        <div className="text-xs text-[color:var(--color-text-tertiary)]">
+          当前显示 {filteredMemories.length} / {memories.length} 条长期记忆
+        </div>
+      </div>
+
+      {memories.length ? (
+        <div className={compact ? "grid gap-3 md:grid-cols-2" : "grid gap-3 lg:grid-cols-2 xl:grid-cols-3"}>
+          {filteredMemories.map((memory) => {
+            const status = memory.status ?? "ACTIVE";
+            const busy = actionLoadingId === memory.id;
+            const body = memory.summary || memory.content || "无内容";
+            return (
+              <div key={memory.id} className="subtle-panel px-4 py-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--color-text-tertiary)]">
+                      {memory.memoryType || "MEMORY"}
+                    </div>
+                    <div className="mt-2 line-clamp-4 break-words text-sm leading-6 text-[color:var(--color-text-primary)]">
+                      {body}
+                    </div>
+                  </div>
+                  <span className="rounded-[8px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-2 py-1 text-xs text-[color:var(--color-text-tertiary)]">
+                    {getMemoryStatusLabel(status)}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-3 gap-2 text-xs text-[color:var(--color-text-tertiary)]">
+                  <div>
+                    <div>重要性</div>
+                    <div className="mt-1 text-sm text-[color:var(--color-text-primary)]">
+                      {formatMemoryScore(memory.importance)}
+                    </div>
+                  </div>
+                  <div>
+                    <div>置信度</div>
+                    <div className="mt-1 text-sm text-[color:var(--color-text-primary)]">
+                      {formatMemoryScore(memory.confidence)}
+                    </div>
+                  </div>
+                  <div>
+                    <div>复用</div>
+                    <div className="mt-1 text-sm text-[color:var(--color-text-primary)]">{memory.useCount ?? 0}</div>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[color:var(--color-text-tertiary)]">
+                  <span>{memory.scope || "UNKNOWN_SCOPE"}</span>
+                  {memory.datasetId ? <span>dataset #{memory.datasetId}</span> : null}
+                  {memory.lastUsedAt ? <span>last used {new Date(memory.lastUsedAt).toLocaleString()}</span> : null}
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title="降低重要性"
+                      aria-label="降低重要性"
+                      disabled={busy || status === "DELETED"}
+                      onClick={() => onImportanceChange(memory, -0.1)}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      title="提高重要性"
+                      aria-label="提高重要性"
+                      disabled={busy || status === "DELETED"}
+                      onClick={() => onImportanceChange(memory, 0.1)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {status === "ACTIVE" ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onStatusAction(memory, "archive")}
+                          disabled={busy}
+                        >
+                          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+                          归档
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onStatusAction(memory, "supersede")}
+                          disabled={busy}
+                        >
+                          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                          替代
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onStatusAction(memory, "restore")}
+                        disabled={busy}
+                      >
+                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                        恢复
+                      </Button>
+                    )}
+                    {status !== "DELETED" ? (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => onStatusAction(memory, "delete")}
+                        disabled={busy}
+                      >
+                        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        软删
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="subtle-panel px-4 py-4 text-sm text-[color:var(--color-text-secondary)]">
+          还没有长期记忆。完成一次分析后，系统会从结果中沉淀可复用的发现、风险和分析模式。
+        </div>
+      )}
     </div>
   );
 }
@@ -428,6 +704,103 @@ function AnalysisProcessPanel({ executionLogs, validationReport, riskNotices }: 
   );
 }
 
+function ContextTracePanel({ trace }: ContextTracePanelProps) {
+  const schemaIds = parseJsonList(trace?.selectedSchemaIdsJson);
+  const documentRefs = parseJsonList(trace?.selectedDocumentChunkIdsJson);
+  const memoryIds = parseJsonList(trace?.selectedMemoryIdsJson);
+  const memorySelections = parseTraceMemorySelections(trace?.filteredItemsJson);
+  const hasTrace = Boolean(trace);
+
+  return (
+    <div className="subtle-panel px-4 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <FolderTree className="h-4 w-4 text-[color:var(--color-text-tertiary)]" />
+          <div className="text-[11px] uppercase text-[color:var(--color-text-tertiary)]">上下文来源</div>
+        </div>
+        {trace?.createdAt ? (
+          <div className="text-xs text-[color:var(--color-text-tertiary)]">
+            {new Date(trace.createdAt).toLocaleString()}
+          </div>
+        ) : null}
+      </div>
+
+      {hasTrace ? (
+        <div className="mt-4 space-y-3">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-[12px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-3 py-3">
+              <div className="text-xs text-[color:var(--color-text-tertiary)]">Schema</div>
+              <div className="mt-2 text-sm text-[color:var(--color-text-primary)]">
+                {schemaIds.length ? schemaIds.join(", ") : "未记录"}
+              </div>
+            </div>
+            <div className="rounded-[12px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-3 py-3">
+              <div className="text-xs text-[color:var(--color-text-tertiary)]">Document Chunks</div>
+              <div className="mt-2 text-sm text-[color:var(--color-text-primary)]">
+                {documentRefs.length ? documentRefs.join(", ") : "未使用"}
+              </div>
+            </div>
+            <div className="rounded-[12px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-3 py-3">
+              <div className="text-xs text-[color:var(--color-text-tertiary)]">Memories</div>
+              <div className="mt-2 text-sm text-[color:var(--color-text-primary)]">
+                {memoryIds.length ? memoryIds.join(", ") : "未使用"}
+              </div>
+            </div>
+          </div>
+          {memorySelections.length ? (
+            <div className="rounded-[12px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-3 py-3">
+              <div className="mb-3 text-xs text-[color:var(--color-text-tertiary)]">Memory Retrieval</div>
+              <div className="space-y-3">
+                {memorySelections.map((memory) => (
+                  <div
+                    key={memory.id ?? `${memory.memoryType}-${memory.summary}`}
+                    className="rounded-[10px] bg-[color:var(--color-background-tertiary)] px-3 py-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm font-medium text-[color:var(--color-text-primary)]">
+                        #{memory.id ?? "-"} · {memory.memoryType ?? "MEMORY"}
+                      </div>
+                      <div className="text-xs text-[color:var(--color-text-tertiary)]">
+                        {memory.retrievalMode ?? "unknown"}
+                        {memory.retrievalScore == null ? "" : ` / ${formatMemoryScore(memory.retrievalScore)}`}
+                      </div>
+                    </div>
+                    {memory.summary ? (
+                      <div className="mt-2 line-clamp-2 text-sm leading-6 text-[color:var(--color-text-secondary)]">
+                        {memory.summary}
+                      </div>
+                    ) : null}
+                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-[color:var(--color-text-tertiary)]">
+                      {memory.scope ? <span>{memory.scope}</span> : null}
+                      <span>importance {formatMemoryScore(memory.importance)}</span>
+                      <span>confidence {formatMemoryScore(memory.confidence)}</span>
+                      {memory.retrievalReason ? <span>{memory.retrievalReason}</span> : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {trace?.packedContext ? (
+            <details className="rounded-[12px] border [border-width:0.5px] border-[color:var(--color-border-tertiary)] px-3 py-3">
+              <summary className="cursor-pointer text-sm font-medium text-[color:var(--color-text-primary)]">
+                Packed Context
+              </summary>
+              <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-[10px] bg-[color:var(--color-background-tertiary)] p-3 text-xs leading-6 text-[color:var(--color-text-secondary)]">
+                {trace.packedContext}
+              </pre>
+            </details>
+          ) : null}
+        </div>
+      ) : (
+        <p className="mt-3 text-sm leading-6 text-[color:var(--color-text-secondary)]">
+          当前历史结果没有关联上下文 trace。
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function WorkspacePage() {
   const { t } = useLanguage();
 
@@ -452,10 +825,15 @@ export default function WorkspacePage() {
   const [artifactStatusFilter, setArtifactStatusFilter] = useState<ArtifactStatusFilter>("ACTIVE");
   const [artifactRefreshing, setArtifactRefreshing] = useState(false);
   const [artifactActionLoading, setArtifactActionLoading] = useState(false);
+  const [recentMemories, setRecentMemories] = useState<ArtifactMemory[]>([]);
+  const [memorySearch, setMemorySearch] = useState("");
+  const [memoryStatusFilter, setMemoryStatusFilter] = useState<MemoryStatusFilter>("ACTIVE");
+  const [memoryRefreshing, setMemoryRefreshing] = useState(false);
+  const [memoryActionLoadingId, setMemoryActionLoadingId] = useState<number | null>(null);
 
   const [workspaceInfoOpen, setWorkspaceInfoOpen] = useState(false);
   const [assetDialogOpen, setAssetDialogOpen] = useState(false);
-  const [assetView, setAssetView] = useState<"tables" | "documents" | "artifacts">("tables");
+  const [assetView, setAssetView] = useState<AssetView>("tables");
   const [relationManagerOpen, setRelationManagerOpen] = useState(false);
   const [relationOpen, setRelationOpen] = useState(false);
   const [editingRelation, setEditingRelation] = useState<DatasetRelation | null>(null);
@@ -530,6 +908,27 @@ export default function WorkspacePage() {
       return searchable.includes(term);
     });
   }, [artifactSchemaFilter, artifactSearch, recentArtifacts]);
+  const filteredMemories = useMemo(() => {
+    const term = memorySearch.trim().toLowerCase();
+
+    if (!term) return recentMemories;
+    return recentMemories.filter((memory) => {
+      const searchable = [
+        memory.memoryType,
+        memory.scope,
+        memory.summary,
+        memory.content,
+        memory.status,
+        memory.datasetId == null ? undefined : `dataset ${memory.datasetId}`,
+        memory.artifactId == null ? undefined : `artifact ${memory.artifactId}`,
+      ]
+        .filter(Boolean)
+        .join("\n")
+        .toLowerCase();
+
+      return searchable.includes(term);
+    });
+  }, [memorySearch, recentMemories]);
 
   const metrics = useMemo(
     () => [
@@ -537,8 +936,9 @@ export default function WorkspacePage() {
       { label: "文档", value: documents.length },
       { label: "关系", value: relations.length },
       { label: "焦点", value: focusIds.length },
+      { label: "记忆", value: recentMemories.length },
     ],
-    [datasets.length, documents.length, relations.length, focusIds.length]
+    [datasets.length, documents.length, focusIds.length, relations.length, recentMemories.length]
   );
 
   const relationRows = useMemo(
@@ -573,18 +973,20 @@ export default function WorkspacePage() {
     async (nextGroupId: number) => {
       setLoadingWorkspaceState(true);
       try {
-        const [workspaceRes, datasetRes, relationRes, documentRes, artifactRes] = await Promise.all([
+        const [workspaceRes, datasetRes, relationRes, documentRes, artifactRes, memoryRes] = await Promise.all([
           workplaceApi.getWorkspace(nextGroupId),
           workplaceApi.getDatasets(nextGroupId),
           workplaceApi.getRelations(nextGroupId),
           documentApi.list(nextGroupId),
           artifactApi.recent({ groupId: nextGroupId, limit: 12, status: artifactStatusFilter }),
+          artifactMemoryApi.recent({ groupId: nextGroupId, limit: 24, status: memoryStatusFilter }),
         ]);
         setActiveWorkspace(workspaceRes.data ?? null);
         setDatasets(datasetRes.data ?? []);
         setRelations(relationRes.data ?? []);
         setDocuments(documentRes.data ?? []);
         setRecentArtifacts(artifactRes.data ?? []);
+        setRecentMemories(memoryRes.data ?? []);
         setFocusIds([]);
         setAnalysis(null);
         setDocumentSearchResults([]);
@@ -595,7 +997,7 @@ export default function WorkspacePage() {
         setLoadingWorkspaceState(false);
       }
     },
-    [artifactStatusFilter, t]
+    [artifactStatusFilter, memoryStatusFilter, t]
   );
 
   useEffect(() => {
@@ -716,6 +1118,87 @@ export default function WorkspacePage() {
     void refreshArtifacts(false, status);
   }
 
+  async function refreshMemories(showToast = true, status = memoryStatusFilter) {
+    if (!groupId) return;
+
+    setMemoryRefreshing(true);
+    try {
+      const memoryRes = await artifactMemoryApi.recent({ groupId, limit: 24, status });
+      setRecentMemories(memoryRes.data ?? []);
+      if (showToast) {
+        toast.success("长期记忆已刷新");
+      }
+    } catch (error) {
+      toast.error((error as Error).message || "刷新长期记忆失败");
+    } finally {
+      setMemoryRefreshing(false);
+    }
+  }
+
+  function changeMemoryStatusFilter(status: MemoryStatusFilter) {
+    setMemoryStatusFilter(status);
+    void refreshMemories(false, status);
+  }
+
+  async function updateMemoryStatus(memory: ArtifactMemory, action: MemoryAction) {
+    if (action === "delete" && typeof window !== "undefined") {
+      const confirmed = window.confirm("确认软删除这条长期记忆？删除后可从“删除”筛选中恢复。");
+      if (!confirmed) return;
+    }
+
+    setMemoryActionLoadingId(memory.id);
+    try {
+      const res =
+        action === "archive"
+          ? await artifactMemoryApi.archive(memory.id)
+          : action === "restore"
+            ? await artifactMemoryApi.restore(memory.id)
+            : action === "supersede"
+              ? await artifactMemoryApi.supersede(memory.id)
+              : await artifactMemoryApi.delete(memory.id);
+      const updatedMemory = res.data;
+      if (updatedMemory) {
+        setRecentMemories((prev) => prev.map((item) => (item.id === updatedMemory.id ? updatedMemory : item)));
+      }
+      const nextStatus = action === "restore" ? "ACTIVE" : memoryStatusFilter;
+      if (action === "restore") {
+        setMemoryStatusFilter("ACTIVE");
+      }
+      await refreshMemories(false, nextStatus);
+      toast.success(
+        action === "archive"
+          ? "长期记忆已归档"
+          : action === "restore"
+            ? "长期记忆已恢复"
+            : action === "supersede"
+              ? "长期记忆已标记为替代"
+              : "长期记忆已软删除"
+      );
+    } catch (error) {
+      toast.error((error as Error).message || "更新长期记忆失败");
+    } finally {
+      setMemoryActionLoadingId(null);
+    }
+  }
+
+  async function updateMemoryImportance(memory: ArtifactMemory, delta: number) {
+    const current = memory.importance ?? 0.5;
+    const nextImportance = clampMemoryImportance(current + delta);
+
+    setMemoryActionLoadingId(memory.id);
+    try {
+      const res = await artifactMemoryApi.updateImportance(memory.id, nextImportance);
+      const updatedMemory = res.data;
+      if (updatedMemory) {
+        setRecentMemories((prev) => prev.map((item) => (item.id === updatedMemory.id ? updatedMemory : item)));
+      }
+    } catch (error) {
+      toast.error((error as Error).message || "更新记忆重要性失败");
+    } finally {
+      setMemoryActionLoadingId(null);
+    }
+  }
+
   async function updateArtifactStatus(action: "archive" | "restore" | "delete") {
     if (!artifactDetail) return;
     if (action === "delete" && typeof window !== "undefined") {
@@ -769,8 +1252,13 @@ export default function WorkspacePage() {
       const result = await workplaceApi.analyze(groupId, prompt, focusIds);
       setAnalysis(result);
       setArtifactStatusFilter("ACTIVE");
-      const artifactRes = await artifactApi.recent({ groupId, limit: 12, status: "ACTIVE" });
+      setMemoryStatusFilter("ACTIVE");
+      const [artifactRes, memoryRes] = await Promise.all([
+        artifactApi.recent({ groupId, limit: 12, status: "ACTIVE" }),
+        artifactMemoryApi.recent({ groupId, limit: 24, status: "ACTIVE" }),
+      ]);
       setRecentArtifacts(artifactRes.data ?? []);
+      setRecentMemories(memoryRes.data ?? []);
       if (!result.success) {
         toast.error(result.message || t("analysis_failed"));
       }
@@ -1188,6 +1676,28 @@ export default function WorkspacePage() {
         </CardContent>
       </Card>
 
+      <Card className="rounded-[14px]">
+        <CardHeader>
+          <CardTitle>长期记忆</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MemoryManagementPanel
+            memories={recentMemories}
+            filteredMemories={filteredMemories}
+            search={memorySearch}
+            statusFilter={memoryStatusFilter}
+            refreshing={memoryRefreshing}
+            actionLoadingId={memoryActionLoadingId}
+            disabled={!groupId}
+            onSearchChange={setMemorySearch}
+            onStatusFilterChange={changeMemoryStatusFilter}
+            onRefresh={() => void refreshMemories()}
+            onStatusAction={(memory, action) => void updateMemoryStatus(memory, action)}
+            onImportanceChange={(memory, delta) => void updateMemoryImportance(memory, delta)}
+          />
+        </CardContent>
+      </Card>
+
       <Dialog open={workspaceInfoOpen} onOpenChange={setWorkspaceInfoOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
@@ -1229,13 +1739,14 @@ export default function WorkspacePage() {
               ["tables", "数据表"],
               ["documents", "文档"],
               ["artifacts", "分析结果"],
+              ["memories", "长期记忆"],
             ].map(([key, label]) => (
               <button
                 key={key}
                 type="button"
                 data-active={assetView === key}
                 className="pill-toggle"
-                onClick={() => setAssetView(key as "tables" | "documents" | "artifacts")}
+                onClick={() => setAssetView(key as AssetView)}
               >
                 {label}
               </button>
@@ -1445,6 +1956,24 @@ export default function WorkspacePage() {
               )}
             </div>
           ) : null}
+
+          {assetView === "memories" ? (
+            <MemoryManagementPanel
+              memories={recentMemories}
+              filteredMemories={filteredMemories}
+              search={memorySearch}
+              statusFilter={memoryStatusFilter}
+              refreshing={memoryRefreshing}
+              actionLoadingId={memoryActionLoadingId}
+              disabled={!groupId}
+              compact
+              onSearchChange={setMemorySearch}
+              onStatusFilterChange={changeMemoryStatusFilter}
+              onRefresh={() => void refreshMemories()}
+              onStatusAction={(memory, action) => void updateMemoryStatus(memory, action)}
+              onImportanceChange={(memory, delta) => void updateMemoryImportance(memory, delta)}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
 
@@ -1527,6 +2056,8 @@ export default function WorkspacePage() {
                 validationReport={artifactDetail.validationReport ?? artifactDetail.analysisReport?.validationReport}
                 riskNotices={artifactDetail.riskNotices ?? artifactDetail.analysisReport?.riskNotices}
               />
+
+              <ContextTracePanel trace={artifactDetail.contextTrace} />
 
               <div className="subtle-panel px-4 py-4">
                 <div className="text-[11px] uppercase tracking-[0.08em] text-[color:var(--color-text-tertiary)]">

@@ -44,7 +44,7 @@ public class AnalysisPlanGenerator {
     private final PythonTools pythonTools;// python工具
     private final ObjectProvider<VectorStore> vectorStoreProvider;// 向量数据库
     private final MetadataService metadataService;// 元数据服务，用于获取完整表结构
-    @Value("${app.vector-store.enabled:true}")
+    @Value("${app.vector-store.enabled:false}")
     private boolean vectorStoreEnabled;
 
     /** 用于提取 markdown 代码块中的 JSON */
@@ -105,7 +105,7 @@ public class AnalysisPlanGenerator {
             databaseTools.resetCallCounters();
             pythonTools.resetCallCounter();
 
-            // 🌟 RAG 检索：拿着用户的问题去 Milvus 里搜相关的列解释或业务知识
+            // RAG 检索：拿着用户的问题去 pgvector 里搜相关的列解释或业务知识
             String ragContext = "";
             try {
                 VectorStore vectorStore = vectorStoreEnabled ? vectorStoreProvider.getIfAvailable() : null;

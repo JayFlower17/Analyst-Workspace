@@ -52,11 +52,24 @@
             <version>${spring-ai.version}</version>
         </dependency>
 
-        <!-- Spring AI Milvus Vector Store -->
+        <!-- Spring AI PostgreSQL/pgvector Vector Store -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-milvus-store-spring-boot-starter</artifactId>
+            <artifactId>spring-ai-pgvector-store</artifactId>
             <version>${spring-ai.version}</version>
+        </dependency>
+
+        <!-- PostgreSQL business database profile -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Flyway migrations for PostgreSQL profile -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
         </dependency>
 
         <!-- H2 Database -->

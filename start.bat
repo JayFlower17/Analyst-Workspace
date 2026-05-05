@@ -18,16 +18,16 @@ start "Backend (Spring Boot)" cmd /c "chcp 65001 > nul & set JAVA_TOOL_OPTIONS=-
 cd ..
 
 echo.
-echo [Step 3] Starting Frontend via Vite...
-cd frontend
-start "Frontend (Vue 3)" cmd /c "chcp 65001 > nul & npm run dev"
+echo [Step 3] Starting Frontend via Next.js...
+cd frontend-next
+start "Frontend (Next.js)" cmd /c "chcp 65001 > nul & npm run dev"
 cd ..
 
 echo.
 echo ===================================================
 echo Services are starting in separate windows!
 echo.
-echo - Frontend:        http://localhost:5173 (usually)
+echo - Frontend:        http://localhost:3000
 echo - Backend API:     http://localhost:8080
 echo - Python Executor: http://localhost:8000
 echo.

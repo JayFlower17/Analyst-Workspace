@@ -24,6 +24,7 @@ public class AnalysisResponse {
     private String generatedSql;
     private Long executionTime;
     private Long artifactId;
+    private Long contextTraceId;
     private UnifiedContextSummary contextSummary;
     private AnalysisRouteDecision routeDecision;
     private AnalysisPlan analysisPlan;

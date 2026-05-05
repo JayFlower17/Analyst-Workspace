@@ -1,0 +1,40 @@
+spring:
+  datasource:
+    url: ${POSTGRES_JDBC_URL:jdbc:postgresql://localhost:5432/analyst_workspace}
+    username: ${POSTGRES_USER:analyst}
+    password: ${POSTGRES_PASSWORD:analyst}
+    driver-class-name: org.postgresql.Driver
+  h2:
+    console:
+      enabled: false
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  ai:
+    vectorstore:
+      pgvector:
+        initialize-schema: false
+        dimensions: 1024
+        distance-type: COSINE_DISTANCE
+        index-type: HNSW
+
+app:
+  persistence:
+    artifact-store: postgres
+    catalog-store: postgres
+    document-store: postgres
+  vector-store:
+    enabled: true
+    provider: pgvector
+  memory:
+    semantic-retrieval:
+      enabled: true
+
+duckdb:
+  path: ${DUCKDB_PATH:./data/analysis.duckdb}

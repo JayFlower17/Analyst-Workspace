@@ -11,6 +11,7 @@ public class AnalysisArtifact {
     private Long sessionId;
     private Long groupId;
     private Long datasetId;
+    private Long contextTraceId;
     private String userQuery;
     private String generatedCodeOrSql;
     private String summary;

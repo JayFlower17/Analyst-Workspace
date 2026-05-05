@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.analysis.model.execution.ToolExecutionLog;
+import com.analysis.model.entity.ArtifactMemory;
+import com.analysis.model.entity.ContextTrace;
 import com.analysis.model.report.AnalysisEvidenceSummary;
 import com.analysis.model.report.AnalysisReport;
 import com.analysis.model.validation.AnalysisValidationReport;
@@ -19,6 +21,7 @@ public class ArtifactDetailResponse {
     private Long sessionId;
     private Long groupId;
     private Long datasetId;
+    private Long contextTraceId;
     private String userQuery;
     private String generatedCodeOrSql;
     private String summary;
@@ -32,6 +35,8 @@ public class ArtifactDetailResponse {
     private List<ToolExecutionLog> executionLogs;
     private AnalysisValidationReport validationReport;
     private List<RiskNotice> riskNotices;
+    private List<ArtifactMemory> memories;
+    private ContextTrace contextTrace;
     private String artifactStatus;
     private LocalDateTime archivedAt;
     private LocalDateTime deletedAt;

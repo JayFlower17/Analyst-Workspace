@@ -9,12 +9,14 @@ import org.springframework.stereotype.Service;
 
 import com.analysis.model.dto.ArtifactDetailResponse;
 import com.analysis.model.entity.AnalysisArtifact;
+import com.analysis.model.entity.ArtifactMemory;
+import com.analysis.model.entity.ContextTrace;
 import com.analysis.model.execution.ToolExecutionLog;
 import com.analysis.model.report.AnalysisEvidenceSummary;
 import com.analysis.model.report.AnalysisReport;
 import com.analysis.model.validation.AnalysisValidationReport;
 import com.analysis.model.validation.RiskNotice;
-import com.analysis.repository.DuckDBRepository;
+import com.analysis.persistence.AnalysisArtifactStore;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -26,7 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class ArtifactService {
 
-    private final DuckDBRepository duckDBRepository;
+    private final AnalysisArtifactStore analysisArtifactStore;
     private final ObjectMapper objectMapper;
 
     public List<AnalysisArtifact> getRecentArtifacts(Long sessionId, Long groupId, int limit, String status)
@@ -34,10 +36,10 @@ public class ArtifactService {
         int safeLimit = Math.max(1, Math.min(limit, 20));
         String safeStatus = normalizeStatus(status);
         if (sessionId != null) {
-            return duckDBRepository.findRecentArtifactsBySessionId(sessionId, safeLimit, safeStatus);
+            return analysisArtifactStore.findRecentArtifactsBySessionId(sessionId, safeLimit, safeStatus);
         }
         if (groupId != null) {
-            return duckDBRepository.findRecentArtifactsByGroupId(groupId, safeLimit, safeStatus);
+            return analysisArtifactStore.findRecentArtifactsByGroupId(groupId, safeLimit, safeStatus);
         }
         throw new IllegalArgumentException("请提供 sessionId 或 groupId");
     }
@@ -47,7 +49,7 @@ public class ArtifactService {
     }
 
     public ArtifactDetailResponse getArtifactDetail(Long id) throws SQLException {
-        AnalysisArtifact artifact = duckDBRepository.findAnalysisArtifactById(id);
+        AnalysisArtifact artifact = analysisArtifactStore.findAnalysisArtifactById(id);
         if (artifact == null) {
             throw new IllegalArgumentException("Artifact not found: " + id);
         }
@@ -67,7 +69,7 @@ public class ArtifactService {
     }
 
     private ArtifactDetailResponse updateArtifactStatus(Long id, String status) throws SQLException {
-        boolean updated = duckDBRepository.updateAnalysisArtifactStatus(id, normalizeStatus(status));
+        boolean updated = analysisArtifactStore.updateAnalysisArtifactStatus(id, normalizeStatus(status));
         if (!updated) {
             throw new IllegalArgumentException("Artifact not found: " + id);
         }
@@ -92,6 +94,7 @@ public class ArtifactService {
         detail.setSessionId(artifact.getSessionId());
         detail.setGroupId(artifact.getGroupId());
         detail.setDatasetId(artifact.getDatasetId());
+        detail.setContextTraceId(artifact.getContextTraceId());
         detail.setUserQuery(artifact.getUserQuery());
         detail.setGeneratedCodeOrSql(artifact.getGeneratedCodeOrSql());
         detail.setSummary(artifact.getSummary());
@@ -107,12 +110,39 @@ public class ArtifactService {
         detail.setExecutionLogs(parseExecutionLogs(artifact.getExecutionLogsJson(), report));
         detail.setValidationReport(parseValidationReport(artifact.getValidationReportJson(), report));
         detail.setRiskNotices(parseRiskNotices(artifact.getRiskNoticesJson(), report));
+        detail.setMemories(loadArtifactMemories(artifact.getId()));
+        detail.setContextTrace(loadContextTrace(artifact.getContextTraceId()));
         detail.setReportAvailable(report != null);
         detail.setArtifactStatus(artifact.getArtifactStatus());
         detail.setArchivedAt(artifact.getArchivedAt());
         detail.setDeletedAt(artifact.getDeletedAt());
         detail.setUpdatedAt(artifact.getUpdatedAt());
         return detail;
+    }
+
+    private ContextTrace loadContextTrace(Long contextTraceId) {
+        if (contextTraceId == null) {
+            return null;
+        }
+        try {
+            return analysisArtifactStore.findContextTraceById(contextTraceId);
+        } catch (Exception e) {
+            log.warn("[Artifact] failed to load context trace: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private List<ArtifactMemory> loadArtifactMemories(Long artifactId) {
+        if (artifactId == null) {
+            return Collections.emptyList();
+        }
+        try {
+            List<ArtifactMemory> memories = analysisArtifactStore.findArtifactMemoriesByArtifactId(artifactId);
+            return memories != null ? memories : Collections.emptyList();
+        } catch (Exception e) {
+            log.warn("[Artifact] failed to load artifact memories: {}", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     private List<Map<String, Object>> parseResultPreview(String resultPreviewJson) {

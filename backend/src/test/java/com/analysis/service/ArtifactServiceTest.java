@@ -16,20 +16,22 @@ import org.junit.jupiter.api.Test;
 
 import com.analysis.model.dto.ArtifactDetailResponse;
 import com.analysis.model.entity.AnalysisArtifact;
+import com.analysis.model.entity.ArtifactMemory;
+import com.analysis.model.entity.ContextTrace;
 import com.analysis.model.enums.ChartType;
 import com.analysis.model.execution.ToolExecutionLog;
 import com.analysis.model.execution.ToolExecutionType;
 import com.analysis.model.report.AnalysisEvidenceSummary;
 import com.analysis.model.report.AnalysisReport;
 import com.analysis.model.validation.AnalysisValidationReport;
-import com.analysis.repository.DuckDBRepository;
+import com.analysis.persistence.AnalysisArtifactStore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 class ArtifactServiceTest {
 
     @Test
     void getArtifactDetailParsesPersistedAnalysisReport() throws Exception {
-        DuckDBRepository repository = mock(DuckDBRepository.class);
+        AnalysisArtifactStore repository = mock(AnalysisArtifactStore.class);
         ObjectMapper objectMapper = new ObjectMapper();
         ArtifactService service = new ArtifactService(repository, objectMapper);
 
@@ -64,6 +66,7 @@ class ArtifactServiceTest {
 
         AnalysisArtifact artifact = new AnalysisArtifact();
         artifact.setId(7L);
+        artifact.setContextTraceId(21L);
         artifact.setSummary("Orders summary");
         artifact.setResultPreviewJson("[{\"channel\":\"Ads\",\"revenue\":100}]");
         artifact.setArtifactSchemaVersion(2);
@@ -72,7 +75,19 @@ class ArtifactServiceTest {
         artifact.setExecutionLogsJson(objectMapper.writeValueAsString(persistedReport.executionLogs()));
         artifact.setValidationReportJson(objectMapper.writeValueAsString(persistedReport.validationReport()));
         artifact.setRiskNoticesJson(objectMapper.writeValueAsString(persistedReport.riskNotices()));
+        ArtifactMemory memory = new ArtifactMemory();
+        memory.setId(11L);
+        memory.setArtifactId(7L);
+        memory.setMemoryType("ANALYSIS_FINDING");
+        memory.setSummary("Orders summary");
         when(repository.findAnalysisArtifactById(7L)).thenReturn(artifact);
+        when(repository.findArtifactMemoriesByArtifactId(7L)).thenReturn(List.of(memory));
+        ContextTrace trace = new ContextTrace();
+        trace.setId(21L);
+        trace.setGroupId(1L);
+        trace.setQuery("Show orders");
+        trace.setSelectedMemoryIdsJson("[11]");
+        when(repository.findContextTraceById(21L)).thenReturn(trace);
 
         ArtifactDetailResponse detail = service.getArtifactDetail(7L);
 
@@ -90,13 +105,18 @@ class ArtifactServiceTest {
         assertNotNull(detail.getValidationReport());
         assertTrue(detail.getValidationReport().passed());
         assertEquals(List.of(), detail.getRiskNotices());
+        assertEquals(1, detail.getMemories().size());
+        assertEquals("ANALYSIS_FINDING", detail.getMemories().get(0).getMemoryType());
+        assertEquals(21L, detail.getContextTraceId());
+        assertNotNull(detail.getContextTrace());
+        assertEquals("[11]", detail.getContextTrace().getSelectedMemoryIdsJson());
         assertEquals(1, detail.getResultPreview().size());
         assertEquals("Ads", detail.getResultPreview().get(0).get("channel"));
     }
 
     @Test
     void getArtifactDetailKeepsLegacyArtifactReadable() throws Exception {
-        DuckDBRepository repository = mock(DuckDBRepository.class);
+        AnalysisArtifactStore repository = mock(AnalysisArtifactStore.class);
         ArtifactService service = new ArtifactService(repository, new ObjectMapper());
 
         AnalysisArtifact artifact = new AnalysisArtifact();
@@ -125,7 +145,7 @@ class ArtifactServiceTest {
 
     @Test
     void archiveRestoreAndDeleteArtifactReturnUpdatedDetail() throws Exception {
-        DuckDBRepository repository = mock(DuckDBRepository.class);
+        AnalysisArtifactStore repository = mock(AnalysisArtifactStore.class);
         ArtifactService service = new ArtifactService(repository, new ObjectMapper());
 
         AnalysisArtifact archived = new AnalysisArtifact();
